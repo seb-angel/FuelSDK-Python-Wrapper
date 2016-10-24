@@ -1,0 +1,2 @@
+FuelSDK>=0.9.3
+suds-jurko>=0.6

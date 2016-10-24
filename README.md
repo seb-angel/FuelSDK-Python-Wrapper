@@ -2,12 +2,9 @@
 Simplify and improve the FuelSDK for Salesforce Marketing Cloud (ExactTarget).
 
 ## Overview
-The Fuel SDK for Python provides easy access to ExactTarget's Fuel API Family services, including a collection of REST APIs and a SOAP API. These APIs provide access to ExactTarget functionality via common collection types such as array/hash.
+The Fuel SDK Wrapper for Python add functionalities to the default Fuel SDK and provides access to more SOAP API objects. The Fuel SDK documentation can be found [here](https://github.com/salesforce-marketingcloud/FuelSDK-Python).
 
 ## Installation
-
-The Fuel SDK for python can be easily installed from the [Python Package Index](https://pypi.python.org/pypi) using the [pip](https://pip.readthedocs.org) command. Pip is a tool for installing and managing Python packages.
-
 ```
 pip install FuelSDK-Wrapper
 ```
@@ -18,7 +15,7 @@ pip install FuelSDK-Wrapper
 
 You must configure your access tokens and details for the Fuel SDK in one of the following two ways.
 
-1. Copy the included `config.python.template` file to `config.python` in either `~/.fuelsdk/` or within this python module.
+1. Copy the included `config.python.template` file to `config.python` in either `~/.fuelsdk/`, within this python module or at the root of your project.
 2. Add environment variables:
     * `FUELSDK_CLIENT_ID` (required)
     * `FUELSDK_CLIENT_SECRET` (required)
@@ -41,67 +38,112 @@ If you have not registered your application or you need to lookup your Applicati
 | Sandbox     | https://webservice.test.exacttarget.com/Service.asmx?wsdl | https://auth-test.exacttargetapis.com/v1/requestToken?legacy=1 |
 
 
+It is also possible to pass those values directly to the API object:
+```
+params = {
+    "clientid": "YOUR_CLIENT_ID",
+    "clientsecret": "YOUR_CLIENT_SECRET"
+}
+api = ET_API(params=params)
+```
+
 ## Example Request
 
-### Code
-
-All ExactTarget objects exposed through the Fuel SDK begin with be prefixed with "ET\_".  Start by working with the ET_List object:
+### Get the List objects
 
 ```python
 # Add a require statement to reference the Fuel SDK's functionality:
-import FuelSDK
+from FuelSDK-Wrapper import ET_API, ObjectType
 
-# Next, create an instance of the ET_Client class:
-myClient = FuelSDK.ET_Client()
+# Next, create an instance of the ET_API class:
+api = ET_API()
 
-# Create an instance of the object type we want to work with:
-list = FuelSDK.ET_List()
-
-# Associate the ET_Client to the object using the auth_stub property:
-list.auth_stub = myClient
-
-# Utilize one of the ET_List methods:
-response = list.get()
+# Get the List objects:
+response = api.get_objects(ObjectType.LIST)
 
 # Print out the results for viewing
-print 'Post Status: ' + str(response.status)
-print 'Code: ' + str(response.code)
-print 'Message: ' + str(response.message)
-print 'Result Count: ' + str(len(response.results))
-print 'Results: ' + str(response.results)
+print('Post Status: {}'.format(response.status))
+print('Code: {}'.format(response.code))
+print('Message: {}'.format(response.message))
+print('Result Count: {}'.format(len(response.results)))
+print('Results: {}'.format(response.results))
 ```
 
-
-### Example Output
+### Some examples of utilization
 
 ```
-Retrieve Status: True
-Code: 200
-Message: OK
-MoreResults: False
-Results Length: 1
-Results: [(List){
-   Client =
-      (ClientID){
-         ID = 113903
-      }
-   PartnerKey = None
-   CreatedDate = 2013-07-29 04:43:32.000073
-   ModifiedDate = 2013-07-29 04:43:32.000073
-   ID = 1966872
-   ObjectID = None
-   CustomerKey = "343431CD-031D-43C7-981F-51B778A5A47F"
-   ListName = "PythonSDKList"
-   Category = 578615
-   Type = "Private"
-   Description = "This list was created with the PythonSDK"
-   ListClassification = "ExactTargetList"
- }]
+from FuelSDK-Wrapper import ET_API, ObjectType, Operator, search_filter
+from datetime import datetime, timedelta
+
+api = ET_API()
+
+response = api.get_objects(
+    ObjectType.SUBSCRIBER,
+    search_filter("EmailAddress", Operator.EQUALS, "my.email@domain.com")
+)
+
+response = api.get_objects(
+    ObjectType.FOLDER,
+    search_filter("Name", Operator.EQUALS, "My_Folder"),
+    property_list=["ID", "Name"]
+)
+
+dt = datetime.now() - timedelta(days=30)
+response = api.get_objects(
+    ObjectType.SEND,
+    search_filter("SendDate", Operator.GREATER_THAN, dt)
+)
 ```
 
-## ET\_Client Class
+### Get More Results
 
-The ET\_Client class takes care of many of the required steps when accessing ExactTarget's API, including retrieving appropriate access tokens, handling token state for managing refresh, and determining the appropriate endpoints for API requests.  In order to leverage the advantages this class provides, use a single instance of this class for an entire session.  Do not instantiate a new ET_Client object for each request made.
+```
+api = ET_API()
+
+response = api.get_objects(ObjectType.SUBSCRIBER)
+i = 0
+while len(response.results) > 0 and (i == 0 or response.more_results):
+    if i > 0 and response.more_results:
+        res = api.continue_request(response.request_id)
+        
+    for subscriber in response.results:
+        print("Subscriber: {}".format(subscriber))
+```
+
+### Perform Request
+
+You can Perform the list of actions found [here](https://help.marketingcloud.com/en/technical_library/web_service_guide/methods/perform/).
+
+```
+api = ET_API()
+
+response = api.get_objects(
+    ObjectType.IMPORT_DEFINITION,
+    search_filter("Name", Operator.EQUALS, "Import_my_file")
+)
+try:
+    import_def = response.results[0]
+    response = api.perform_action("start", import_def)
+except IndexError:
+    pass
+```
+
+### List SOAP API Object Properties
+
+```
+api = ET_API()
+
+response = api.get_info(ObjectType.CONTENT_AREA)
+```
+
+### Object Type Missing
+
+In case the Object Type is missing from the ObjectType class, you can use a string directly: 
+```
+api = ET_API()
+
+response = api.get_objects("AccountUser")
+```
 
 ## Responses
 
@@ -114,43 +156,12 @@ All methods on Fuel SDK objects return a generic object that follows the same st
 | message   | Text values containing more details in the event of an Error    |
 | results   | Collection containing the details unique to the method called.  |
 
-Get Methods also return an addition value to indicate if more information is available (that information can be retrieved using the getMoreResults method):
+## Debug
 
- - moreResults - Boolean value that indicates on Get requests if more data is available.
-
-
-## Samples
-
-Find more sample files that illustrate using all of the available functions for ExactTarget objects exposed through the API in the objsamples directory.
-
-Sample List:
-
-* [BounceEvent](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_bounceevent.py)
-* [Campaign](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_campaign.py)
-* [ClickEvent](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_clickevent.py)
-* [ContentArea](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_contentarea.py)
-* [DataExtension](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_dataextension.py)
-* [Email](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_email.py)
-* [List](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_list.py)
-* [List > Subscriber](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_list_subscriber.py)
-* [OpenEvent](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_openevent.py)
-* [SentEvent](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_sentevent.py)
-* [Subscriber](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_subscriber.py)
-* [TriggeredSend](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_triggeredsend.py)
-* [UnsubEvent](https://github.com/ExactTarget/FuelSDK-Python/blob/master/objsamples/sample_unsubevent.py)
-
-## Development on FuelSDK-Python
-
-If you would like to help contribute to the FuelSDK-Python project, checkout the code from the [GitHub project page](https://github.com/ExactTarget/FuelSDK-Python). The use of [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/) is highly recommended. After installing virtualenvwrapper you can run the following commands to setup a sandbox for development.
-
+To debug any issues, activate the debug mode:
 ```
-git clone git@github.com:ExactTarget/FuelSDK-Python.git
-mkvirtualenv FuelSDK-Python
-cd FuelSDK-Python
-pip install -r requirements.txt
+api = ET_API(debug=True)
 ```
-
-You will then have a sandbox which includes all dependencies for doing development on FuelSDK-Python.
 
 ## Requirements
 
@@ -158,6 +169,5 @@ Python 2.7.x
 
 Libraries:
 
-* pyjwt
-* requests
-* suds
+* FuelSDK>=0.9.3
+* suds-jurko>=0.6

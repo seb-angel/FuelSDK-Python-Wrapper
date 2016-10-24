@@ -2,10 +2,9 @@
 
 from __future__ import unicode_literals
 
+import time
 import logging
 import FuelSDK
-import time
-from FuelSDK.rest import ET_Constructor
 from datetime import date, datetime
 
 logger_debug = logging.getLogger('FuelSDK-Wrapper')
@@ -25,10 +24,12 @@ class ObjectType:
     CAMPAIGN_ASSET = 'ET_Campaign_Asset'
     CONTENT_AREA = 'ET_ContentArea'
     DATA_EXTENSION = 'ET_DataExtension'
+    DATA_EXTENSION_COLUMN = 'ET_DataExtension_Column'
     DATA_EXTENSION_ROW = 'ET_DataExtension_Row'
     EMAIL = 'ET_Email'
     FOLDER = 'ET_Folder'
     LIST = 'ET_List'
+    LIST_SUBSCRIBER = 'ET_List_Subscriber'
     PROFILE_ATTRIBUTE = 'ET_ProfileAttribute'
     SUBSCRIBER = 'ET_Subscriber'
     TRIGGERED_SEND = 'ET_TriggeredSend'
@@ -81,7 +82,7 @@ class ET_ObjectRest(FuelSDK.ET_CUDSupportRest):
         self.urlPropsRequired = []
 
 
-class ET_Perform(ET_Constructor):
+class ET_Perform(FuelSDK.rest.ET_Constructor):
     def __init__(self, auth_stub, action, object_source=None):
         auth_stub.refresh_token()
 
@@ -99,18 +100,30 @@ class ET_Perform(ET_Constructor):
             super(ET_Perform, self).__init__(response)
 
 
+def search_filter(property_name, operator, value):
+    value_type = 'Value'
+    if isinstance(value, date) or isinstance(value, datetime):
+        value_type = 'DateValue'
+
+    return {
+        'Property': property_name,
+        'SimpleOperator': operator,
+        value_type: value
+    }
+
+
 class ET_API:
 
     client = None
+    current_object = None
 
     def __init__(self, get_server_wsdl=False, debug=False, params=None):
-        # Set Debug to True for more information
         if debug:
             logger_debug.setLevel(logging.DEBUG)
 
         self.client = FuelSDK.ET_Client(get_server_wsdl=get_server_wsdl, debug=debug, params=params)
 
-    class SalesforceApiError(Exception):
+    class ETApiError(Exception):
         pass
 
     class ObjectAlreadyExists(Exception):
@@ -127,9 +140,9 @@ class ET_API:
             elif len(response.results) > 0 and 'Concurrency violation' in response.results[0].ErrorMessage:
                 raise ET_API.ObjectDoesntExist("Object doesn't exist")
             elif len(response.results) > 0:
-                raise ET_API.SalesforceApiError('Error: {}'.format(response.results[0].StatusMessage))
+                raise ET_API.ETApiError('Error: {}'.format(response.results[0].StatusMessage))
             else:
-                raise ET_API.SalesforceApiError('{}'.format(response.message))
+                raise ET_API.ETApiError('{}'.format(response.message))
 
         logger_debug.debug('Post Status: {}; Code: {}; Message: {}; Result Count: {}'
                            .format(response.status, response.code, response.message, len(response.results)))
@@ -142,32 +155,20 @@ class ET_API:
     def parse_object(self, object_type, properties):
         return FuelSDK.rest.ET_Constructor().parse_props_into_ws_object(self.get_client(), object_type, properties)
 
-    @staticmethod
-    def search_filter(property_name, operator, value):
-        value_type = 'Value'
-        if isinstance(value, date) or isinstance(value, datetime):
-            value_type = 'DateValue'
-
-        return {
-            'Property': property_name,
-            'SimpleOperator': operator,
-            value_type: value
-        }
-
     def get_object_class(self, object_type, is_rest=False):
         try:
             if object_type.startswith('ET_'):
-                obj = getattr(FuelSDK, object_type)()
+                self.current_object = getattr(FuelSDK, object_type)()
             else:
-                obj = getattr(FuelSDK, 'ET_{}'.format(object_type))()
+                self.current_object = getattr(FuelSDK, 'ET_{}'.format(object_type))()
         except AttributeError:
             if is_rest:
-                obj = globals()['ET_ObjectRest'](object_type)
+                self.current_object = globals()['ET_ObjectRest'](object_type)
             else:
-                obj = globals()['ET_Object'](object_type)
+                self.current_object = globals()['ET_Object'](object_type)
 
-        obj.auth_stub = self.get_client()
-        return obj
+        self.current_object.auth_stub = self.get_client()
+        return self.current_object
 
     def get_info(self, object_type):
         obj = self.get_object_class(object_type)
@@ -182,21 +183,19 @@ class ET_API:
         return res
 
     @validate_response()
-    def get_objects(self, object_type, search_filter=None, property_list=None, is_rest=False, is_global=False):
+    def get_objects(self, object_type, search_filter=None, property_list=None, query_all_accounts=False, is_rest=False):
         obj = self.get_object_class(object_type, is_rest)
         if search_filter:
             obj.search_filter = search_filter
         if property_list:
             obj.props = property_list
-        if is_global:
+        if query_all_accounts:
             obj.QueryAllAccounts = True
         return obj.get()
 
     @validate_response()
-    def continue_request(self, request_id):
-        auth_stub = self.get_client()
-        obj = FuelSDK.rest.ET_Continue(auth_stub, request_id)
-        return obj
+    def get_more_results(self):
+        return self.current_object.getMoreResults()
 
     @validate_response()
     def create_object(self, object_type, property_dict, data_extension_key=None, is_rest=False):
@@ -226,10 +225,10 @@ class ET_API:
     # Specific methods
     def get_data_extension_columns(self, customer_key, property_list=None):
         search_filter = self.search_filter('DataExtension.CustomerKey', Operator.EQUALS, customer_key)
-        return self.get_objects('ET_DataExtension_Column', search_filter, property_list)
+        return self.get_objects(ObjectType.DATA_EXTENSION_COLUMN, search_filter, property_list)
 
     def get_list_subscriber(self, search_filter=None, property_list=None):
-        return self.get_objects('ET_List_Subscriber', search_filter, property_list)
+        return self.get_objects(ObjectType.LIST_SUBSCRIBER, search_filter, property_list)
 
     def get_data_extension_rows(self, customer_key, search_filter=None, property_list=None):
         de_row = FuelSDK.ET_DataExtension_Row()
@@ -258,7 +257,7 @@ class ET_API:
 
     def create_campaign(self, name, description, campaign_code, color='Public', is_favorite=False):
         if color not in ('Public', 'Private'):
-            raise self.SalesforceApiError('Invalid color, must be: Public or Private')
+            raise self.ETApiError('Invalid color, must be: Public or Private')
 
         property_dict = {
             'name': name,
@@ -269,7 +268,7 @@ class ET_API:
         }
         return self.create_object(ObjectType.CAMPAIGN, property_dict)
 
-    def create_html_paste_email(self, customer_key, category_id, name, subject, pre_header, html, plain_text):
+    def create_or_update_html_paste_email(self, customer_key, category_id, name, subject, pre_header, html, plain_text):
         property_dict = {
             'CustomerKey': customer_key,
             'CategoryID': category_id,
@@ -288,24 +287,19 @@ class ET_API:
             object_id_dict = {'CustomerKey': customer_key}
             return self.update_object(ObjectType.EMAIL, object_id_dict, property_dict)
 
-    def create_subscriber(self, attributes):
-        self.create_object(ObjectType.DATA_EXTENSION_ROW, attributes,
-                           data_extension_key='subscribers_dataextension')
-
-    def update_subscriber(self, object_id, attributes):
-        object_id_dict = {'ID': object_id}
-        self.update_object(ObjectType.DATA_EXTENSION_ROW, object_id_dict, attributes,
-                           data_extension_key='subscribers_dataextension')
-
     def get_or_update_user_initiated_email(self, subscription_name, email_name):
         res = self.get_objects(
-            'EmailSendDefinition',
-            self.search_filter('Name', Operator.EQUALS, subscription_name),
-            ['Email.ID']
+            object_type='EmailSendDefinition',
+            search_filter=self.search_filter('Name', Operator.EQUALS, subscription_name),
+            property_list=['Email.ID']
         )
         try:
             email_id = res.results[-1].Email.ID
-            res = self.get_objects(ObjectType.EMAIL, self.search_filter('ID', Operator.EQUALS, email_id), ['Name'])
+            res = self.get_objects(
+                object_type=ObjectType.EMAIL,
+                search_filter=self.search_filter('ID', Operator.EQUALS, email_id),
+                property_list=['Name']
+            )
             if res.results[-1].Name == email_name:
                 return subscription_name
         except IndexError:
