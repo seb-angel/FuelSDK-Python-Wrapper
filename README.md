@@ -6,7 +6,7 @@ The Fuel SDK Wrapper for Python add functionalities to the default Fuel SDK and 
 
 ## Installation
 ```
-pip install FuelSDK-Wrapper
+pip install FuelSDKWrapper
 ```
 
 ## Getting Started
@@ -53,7 +53,7 @@ api = ET_API(params=params)
 
 ```python
 # Add a require statement to reference the Fuel SDK's functionality:
-from FuelSDK-Wrapper import ET_API, ObjectType
+from FuelSDKWrapper import ET_API, ObjectType
 
 # Next, create an instance of the ET_API class:
 api = ET_API()
@@ -72,7 +72,7 @@ print('Results: {}'.format(response.results))
 ### Some examples of utilization
 
 ```
-from FuelSDK-Wrapper import ET_API, ObjectType, Operator, search_filter
+from FuelSDKWrapper import ET_API, ObjectType, Operator, search_filter
 from datetime import datetime, timedelta
 
 api = ET_API()
@@ -170,4 +170,7 @@ Python 2.7.x
 Libraries:
 
 * FuelSDK>=0.9.3
+* PyJWT>=0.1.9
+* requests>=2.2.1
+* suds>=0.4
 * suds-jurko>=0.6

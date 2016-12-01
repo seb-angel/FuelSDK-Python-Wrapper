@@ -7,7 +7,7 @@ import logging
 import FuelSDK
 from datetime import date, datetime
 
-logger_debug = logging.getLogger('FuelSDK-Wrapper')
+logger_debug = logging.getLogger('FuelSDKWrapper')
 
 
 class Operator:
