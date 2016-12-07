@@ -224,8 +224,8 @@ class ET_API:
 
     # Specific methods
     def get_data_extension_columns(self, customer_key, property_list=None):
-        search_filter = self.search_filter('DataExtension.CustomerKey', Operator.EQUALS, customer_key)
-        return self.get_objects(ObjectType.DATA_EXTENSION_COLUMN, search_filter, property_list)
+        search_filter_object = search_filter('DataExtension.CustomerKey', Operator.EQUALS, customer_key)
+        return self.get_objects(ObjectType.DATA_EXTENSION_COLUMN, search_filter_object, property_list)
 
     def get_list_subscriber(self, search_filter=None, property_list=None):
         return self.get_objects(ObjectType.LIST_SUBSCRIBER, search_filter, property_list)
@@ -290,14 +290,14 @@ class ET_API:
     def get_or_update_user_initiated_email(self, subscription_name, email_name):
         res = self.get_objects(
             object_type='EmailSendDefinition',
-            search_filter=self.search_filter('Name', Operator.EQUALS, subscription_name),
+            search_filter=search_filter('Name', Operator.EQUALS, subscription_name),
             property_list=['Email.ID']
         )
         try:
             email_id = res.results[-1].Email.ID
             res = self.get_objects(
                 object_type=ObjectType.EMAIL,
-                search_filter=self.search_filter('ID', Operator.EQUALS, email_id),
+                search_filter=search_filter('ID', Operator.EQUALS, email_id),
                 property_list=['Name']
             )
             if res.results[-1].Name == email_name:
