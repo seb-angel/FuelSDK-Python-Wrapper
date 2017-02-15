@@ -112,6 +112,18 @@ def search_filter(property_name, operator, value):
     }
 
 
+def complex_filter(left_operand, logical_operator, right_operand):
+    logical_operator = logical_operator.upper()
+    if logical_operator not in ('AND', 'OR'):
+        raise ValueError("Invalid Logical Operator, must be AND or OR.")
+
+    return {
+        'LeftOperand': left_operand,
+        'LogicalOperator': logical_operator,
+        'RightOperand': right_operand
+    }
+
+
 class ET_API:
 
     client = None
