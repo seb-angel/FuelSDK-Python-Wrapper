@@ -101,7 +101,7 @@ class ET_Perform(FuelSDK.rest.ET_Constructor):
 
 
 def search_filter(property_name, operator, value):
-    simple_filter(property_name, operator, value)
+    return simple_filter(property_name, operator, value)
 
 
 def simple_filter(property_name, operator, value):
