@@ -101,6 +101,10 @@ class ET_Perform(FuelSDK.rest.ET_Constructor):
 
 
 def search_filter(property_name, operator, value):
+    simple_filter(property_name, operator, value)
+
+
+def simple_filter(property_name, operator, value):
     value_type = 'Value'
     if isinstance(value, date) or isinstance(value, datetime):
         value_type = 'DateValue'
@@ -218,7 +222,7 @@ class ET_API:
         return obj.post()
 
     @validate_response()
-    def update_object(self, object_type, object_id_dict, values_dict, data_extension_key=None, is_rest=False):
+    def update_object(self, object_type, object_id_dict=None, values_dict=None, data_extension_key=None, is_rest=False):
         obj = self.get_object_class(object_type, is_rest)
         if object_type == ObjectType.DATA_EXTENSION_ROW:
             obj.CustomerKey = data_extension_key
@@ -229,14 +233,17 @@ class ET_API:
         return obj.patch()
 
     @validate_response()
-    def delete_object(self, object_type, object_id, is_rest=False):
+    def delete_object(self, object_type, object_id_dict=None, data_extension_key=None, is_rest=False):
         obj = self.get_object_class(object_type, is_rest)
-        obj.props = {'ID': object_id}
+        if object_type == ObjectType.DATA_EXTENSION_ROW:
+            obj.CustomerKey = data_extension_key
+        if object_id_dict:
+            obj.props = object_id_dict
         return obj.delete()
 
     # Specific methods
     def get_data_extension_columns(self, customer_key, property_list=None):
-        search_filter_object = search_filter('DataExtension.CustomerKey', Operator.EQUALS, customer_key)
+        search_filter_object = simple_filter('DataExtension.CustomerKey', Operator.EQUALS, customer_key)
         return self.get_objects(ObjectType.DATA_EXTENSION_COLUMN, search_filter_object, property_list)
 
     def get_list_subscriber(self, search_filter=None, property_list=None):
@@ -302,14 +309,14 @@ class ET_API:
     def get_or_update_user_initiated_email(self, subscription_name, email_name):
         res = self.get_objects(
             object_type='EmailSendDefinition',
-            search_filter=search_filter('Name', Operator.EQUALS, subscription_name),
+            search_filter=simple_filter('Name', Operator.EQUALS, subscription_name),
             property_list=['Email.ID']
         )
         try:
             email_id = res.results[-1].Email.ID
             res = self.get_objects(
                 object_type=ObjectType.EMAIL,
-                search_filter=search_filter('ID', Operator.EQUALS, email_id),
+                search_filter=simple_filter('ID', Operator.EQUALS, email_id),
                 property_list=['Name']
             )
             if res.results[-1].Name == email_name:
