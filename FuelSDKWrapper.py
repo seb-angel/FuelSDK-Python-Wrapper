@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 
+import suds
 import time
 import logging
 import FuelSDK
@@ -100,6 +101,36 @@ class ET_Perform(FuelSDK.rest.ET_Constructor):
             super(ET_Perform, self).__init__(response)
 
 
+class ET_Extract(FuelSDK.rest.ET_Constructor):
+    def __init__(self, auth_stub, parameters):
+        auth_stub.refresh_token()
+
+        ws_extractRequest = auth_stub.soap_client.factory.create('ExtractRequest')
+        ws_extractRequest.Options = auth_stub.soap_client.factory.create('ExtractOptions')
+        ws_extractRequest.ID = "c7219016-a7f0-4c72-8657-1ec12c28a0db"
+
+        ws_parameters = []
+        for name, value in parameters.items():
+            ws_parameter = auth_stub.soap_client.factory.create("ExtractParameter")
+            ws_parameter.Name = name
+            if isinstance(value, date) or isinstance(value, datetime):
+                ws_parameter.Value = value.strftime("%m/%d/%Y 12:00:00 AM")
+            else:
+                ws_parameter.Value = value
+            ws_parameters.append(ws_parameter)
+        ws_extractRequest.Parameters.Parameter = ws_parameters
+
+        response = None
+        try:
+            response = auth_stub.soap_client.service.Extract(ws_extractRequest)
+        except suds.TypeNotFound as e:
+            if e.message != "Type not found: 'ExtractResult'":
+                raise e
+
+        if response is not None:
+            super(ET_Extract, self).__init__(response)
+
+
 def search_filter(property_name, operator, value):
     return simple_filter(property_name, operator, value)
 
@@ -196,6 +227,11 @@ class ET_API:
     def perform_action(self, action, object_source=None):
         auth_stub = self.get_client()
         res = ET_Perform(auth_stub, action, object_source)
+        return res
+
+    def extract_data(self, parameters):
+        auth_stub = self.get_client()
+        res = ET_Extract(auth_stub, parameters)
         return res
 
     @validate_response()
