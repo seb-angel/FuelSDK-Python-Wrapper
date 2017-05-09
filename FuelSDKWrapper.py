@@ -15,12 +15,20 @@ class Operator:
 
     EQUALS = 'equals'
     NOT_EQUALS = 'notEquals'
+    IS_NULL = 'isNull'
+    IS_NOT_NULL = 'isNotNull'
     GREATER_THAN = 'greaterThan'
+    GREATER_THAN_OR_EQUAL = 'greaterThanOrEqual'
     LESS_THAN = 'lessThan'
+    LESS_THAN_OR_EQUAL = 'lessThanOrEqual'
+    BETWEEN = 'between'
+    LIKE = 'like'
+    IN = 'IN'
 
 
 class ObjectType:
 
+    AUTOMATION = 'ET_Automation'
     CAMPAIGN = 'ET_Campaign'
     CAMPAIGN_ASSET = 'ET_Campaign_Asset'
     CONTENT_AREA = 'ET_ContentArea'
@@ -87,15 +95,17 @@ class ET_Perform(FuelSDK.rest.ET_Constructor):
     def __init__(self, auth_stub, action, object_source=None):
         auth_stub.refresh_token()
 
-        ws_performRequest = auth_stub.soap_client.factory.create('PerformRequestMsg')
-        ws_performRequest.Options = auth_stub.soap_client.factory.create('Options')
-        ws_performRequest.Action = action
-
         ws_definition = auth_stub.soap_client.factory.create(type(object_source).__name__)
-        ws_definition.CustomerKey = object_source.CustomerKey
-        ws_performRequest.Definitions = [ws_definition]
+        if object_source.CustomerKey:
+            ws_definition.CustomerKey = object_source.CustomerKey
+        if object_source.ObjectID:
+            ws_definition.ObjectID = object_source.ObjectID
 
-        response = auth_stub.soap_client.service.Perform(ws_performRequest)
+        response = None
+        try:
+            response = auth_stub.soap_client.service.Perform(Action=action, Definitions={"Definition": ws_definition})
+        except suds.TypeNotFound:
+            pass
 
         if response is not None:
             super(ET_Perform, self).__init__(response)
