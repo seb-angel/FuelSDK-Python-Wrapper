@@ -4,8 +4,10 @@ from __future__ import unicode_literals
 
 import suds
 import time
+import json
 import logging
 import FuelSDK
+import requests
 from datetime import date, datetime
 
 logger_debug = logging.getLogger('FuelSDKWrapper')
@@ -304,6 +306,20 @@ class ET_API:
         if property_list:
             de_row.props = property_list
         return de_row.get()
+
+    def create_data_extension_rows(self, data_extension_key, keys_list, values_list):
+        endpoint = 'https://www.exacttargetapis.com/hub/v1/dataevents/key:{}/rowset'.format(data_extension_key)
+        headers = {'content-type': 'application/json', 'Authorization': 'Bearer {}'.format(self.client.authToken)}
+
+        if len(keys_list) != len(values_list):
+            raise self.ETApiError("keys_list and values_list must be the same size.")
+
+        payload = []
+        for i, values in enumerate(values_list):
+            payload.append({"keys": keys_list[i], "values": values})
+
+        r = requests.post(endpoint, data=json.dumps(payload), headers=headers)
+        return FuelSDK.rest.ET_Constructor(r, True)
 
     # Convenience methods
     @validate_response()
