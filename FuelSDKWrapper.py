@@ -240,9 +240,9 @@ class ET_API:
         except IndexError:
             return []
 
-    def perform_action(self, action, object_source=None):
+    def perform_action(self, action, object_source=None, object_type=None):
         auth_stub = self.get_client()
-        res = ET_Perform(auth_stub, action, object_source)
+        res = ET_Perform(auth_stub, action, object_source, object_type)
         return res
 
     def extract_data(self, parameters):
