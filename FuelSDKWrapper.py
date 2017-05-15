@@ -94,10 +94,14 @@ class ET_ObjectRest(FuelSDK.ET_CUDSupportRest):
 
 
 class ET_Perform(FuelSDK.rest.ET_Constructor):
-    def __init__(self, auth_stub, action, object_source=None):
+    def __init__(self, auth_stub, action, object_source=None, object_type=None):
         auth_stub.refresh_token()
 
-        ws_definition = auth_stub.soap_client.factory.create(type(object_source).__name__)
+        if object_type:
+            ws_definition = auth_stub.soap_client.factory.create(object_type)
+        else:
+            ws_definition = auth_stub.soap_client.factory.create(type(object_source).__name__)
+
         if object_source.CustomerKey:
             ws_definition.CustomerKey = object_source.CustomerKey
         if object_source.ObjectID:
