@@ -53,9 +53,10 @@ class ObjectType:
     UNSUB_EVENT = 'ET_UnsubEvent'
 
     # Non FuelSDK
-    SEND = 'Send'
     IMPORT_DEFINITION = 'ImportDefinition'
     IMPORT_RESULTS_SUMMARY = 'ImportResultsSummary'
+    QUERY_DEFINITION = 'QueryDefinition'
+    SEND = 'Send'
 
 
 def validate_response():
@@ -285,10 +286,11 @@ class ET_API:
         return obj.patch()
 
     @validate_response()
-    def delete_object(self, object_type, object_id_dict=None, data_extension_key=None, is_rest=False):
+    def delete_object(self, object_type, object_id_dict=None, data_extension_key=None, data_extension_name=None, is_rest=False):
         obj = self.get_object_class(object_type, is_rest)
         if object_type == ObjectType.DATA_EXTENSION_ROW:
             obj.CustomerKey = data_extension_key
+            obj.Name = data_extension_name
         if object_id_dict:
             obj.props = object_id_dict
         return obj.delete()
@@ -339,6 +341,34 @@ class ET_API:
         }
         response = self.get_client().CreateDataExtensions([data_extension])
         return response
+
+    @validate_response()
+    def clear_data_extension(self, data_extension_key):
+        res = self.get_objects(ObjectType.DATA_EXTENSION,
+                               simple_filter("CustomerKey", Operator.EQUALS, data_extension_key),
+                               property_list=["CustomerKey", "ObjectID", "Name"])
+
+        if len(res.results) == 0:
+            raise self.ETApiError("The Data Extension {} wasn't found.".format(data_extension_key))
+
+        return self.perform_action("ClearData", res.results[0], "DataExtension")
+
+    @validate_response()
+    def start_automation(self, automation_key):
+        res = self.get_objects(ObjectType.AUTOMATION,
+                               simple_filter("CustomerKey", Operator.EQUALS, automation_key),
+                               property_list=["CustomerKey", "ProgramID", "Name"])
+
+        if len(res.results) == 0:
+            raise self.ETApiError("The Automation {} wasn't found.".format(automation_key))
+
+        aut_object = res.results[0]
+        aut = self.get_client().soap_client.factory.create("Automation")
+        aut.Name = aut_object.Name
+        aut.CustomerKey = aut_object.CustomerKey
+        aut.ObjectID = aut_object.ObjectID
+
+        return self.perform_action("Start", aut, "Automation")
 
     def create_campaign(self, name, description, campaign_code, color='Public', is_favorite=False):
         if color not in ('Public', 'Private'):
@@ -417,3 +447,20 @@ class ET_API:
         })
 
         return self.get_client().soap_client.service.Schedule(None, 'start', schedule, [{'Interaction': email_send}])
+
+    def get_folder_full_path(self, folder_id):
+        res = self.get_objects(ObjectType.FOLDER, simple_filter("ID", Operator.EQUALS, folder_id))
+        full_path_array = [res.results[0].Name]
+        folder_id = res.results[0].ParentFolder.ID
+        while folder_id != 0:
+            res = self.get_objects(ObjectType.FOLDER, simple_filter("ID", Operator.EQUALS, folder_id))
+            full_path_array.append(res.results[0].Name)
+            folder_id = res.results[0].ParentFolder.ID
+        full_path = full_path_array[-1]
+        for i, folder_name in reversed(list(enumerate(full_path_array))):
+            if i == 1:
+                continue
+            if i == len(full_path_array):
+                break
+            full_path += " > " + folder_name
+        return full_path
