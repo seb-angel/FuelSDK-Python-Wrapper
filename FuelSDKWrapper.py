@@ -55,6 +55,7 @@ class ObjectType:
     # Non FuelSDK
     IMPORT_DEFINITION = 'ImportDefinition'
     IMPORT_RESULTS_SUMMARY = 'ImportResultsSummary'
+    PORTFOLIO = 'Portfolio'
     QUERY_DEFINITION = 'QueryDefinition'
     SEND = 'Send'
 
@@ -458,9 +459,7 @@ class ET_API:
             folder_id = res.results[0].ParentFolder.ID
         full_path = full_path_array[-1]
         for i, folder_name in reversed(list(enumerate(full_path_array))):
-            if i == 1:
+            if i == len(full_path_array) - 1:
                 continue
-            if i == len(full_path_array):
-                break
             full_path += " > " + folder_name
         return full_path
