@@ -58,6 +58,7 @@ class ObjectType:
     PORTFOLIO = 'Portfolio'
     QUERY_DEFINITION = 'QueryDefinition'
     SEND = 'Send'
+    TEMPLATE = 'Template'
 
 
 def validate_response():
@@ -448,6 +449,15 @@ class ET_API:
         })
 
         return self.get_client().soap_client.service.Schedule(None, 'start', schedule, [{'Interaction': email_send}])
+
+    @validate_response()
+    def send_trigger_email(self, trigger_key, subscribers):
+        trigger = FuelSDK.ET_TriggeredSend()
+        trigger.auth_stub = self.get_client()
+        trigger.props = {"CustomerKey": trigger_key}
+        trigger.subscribers = subscribers
+        trigger.attributes = {}
+        return trigger.send()
 
     def get_folder_full_path(self, folder_id):
         res = self.get_objects(ObjectType.FOLDER, simple_filter("ID", Operator.EQUALS, folder_id))
