@@ -450,14 +450,23 @@ class ET_API:
 
         return self.get_client().soap_client.service.Schedule(None, 'start', schedule, [{'Interaction': email_send}])
 
-    @validate_response()
-    def send_trigger_email(self, trigger_key, subscribers):
-        trigger = FuelSDK.ET_TriggeredSend()
-        trigger.auth_stub = self.get_client()
-        trigger.props = {"CustomerKey": trigger_key}
-        trigger.subscribers = subscribers
-        trigger.attributes = {}
-        return trigger.send()
+    def send_trigger_email(self, trigger_key, email_address, subscriber_key, attributes=None):
+        token = self.get_client().authToken
+        url = "https://www.exacttargetapis.com/messaging/v1/messageDefinitionSends/key:{}/send".format(trigger_key)
+        data = {
+            "To": {
+                "Address": email_address,
+                "SubscriberKey": subscriber_key,
+                "ContactAttributes": {
+                    "SubscriberAttributes": attributes or {}
+                }
+            },
+            "OPTIONS": {
+                "RequestType": "ASYNC"
+            }
+        }
+        res = requests.post(url, data=json.dumps(data), headers={"Authorization": "Bearer {}".format(token)})
+        return res
 
     def get_folder_full_path(self, folder_id):
         res = self.get_objects(ObjectType.FOLDER, simple_filter("ID", Operator.EQUALS, folder_id))
