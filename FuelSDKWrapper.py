@@ -59,6 +59,118 @@ class ObjectType:
     QUERY_DEFINITION = 'QueryDefinition'
     SEND = 'Send'
     TEMPLATE = 'Template'
+    ACCOUNT = 'Account'
+    ACCOUNT_USER = 'AccountUser'
+    BRAND = 'Brand'
+    BRAND_TAG = 'BrandTag'
+    BUSINESS_UNIT = 'BusinessUnit',
+    DATA_EXTENSION_TEMPLATE = 'DataExtensionTemplate'
+    DOUBLE_OPTIN_MO_KEYWORD = 'DoubleOptInMOKeyword'
+    EMAIL_SEND_DEFINITION = 'EmailSendDefinition'
+    FILE_TRIGGER = 'FileTrigger'
+    FILE_TRIGGER_TYPE_LAST_PULL = 'FileTriggerTypeLastPull'
+    FILTER_DEFINITION = 'FilterDefinition'
+    FORWARDED_EMAIL_EVENT = 'ForwardedEmailEvent'
+    FORWARDED_EMAIL_OPTIN_EVENT = 'ForwardedEmailOptInEvent'
+    GROUP = 'Group'
+    HELP_MO_KEYWORD = 'HelpMOKeyword'
+    HIVE_QUERY_DEFINITION = 'HiveQueryDefinition'
+    LINK_SEND = 'LinkSend'
+    LIST_ATTRIBUTE = 'ListAttribute'
+    LIST_SEND = 'ListSend'
+    MESSAGE_VENDOR_KIND = 'MessagingVendorKind'
+    NOT_SEND_EVENT = 'NotSentEvent'
+    PLATFORM_APPLICATION = 'PlatformApplication'
+    PLATFORM_APPLICATION_PACKAGE = 'PlatformApplicationPackage'
+    PRIVATE_IP = 'PrivateIP'
+    PROGRAM_MANIFEST_TEMPLATE = 'ProgramManifestTemplate'
+    PUBLIC_KEY_MANAGEMENT = 'PublicKeyManagement'
+    PUBLICATION = 'Publication'
+    PUBLICATION_SUBSCRIBER = 'PublicationSubscriber'
+    REPLY_MAIL_MANAGEMENT_CONFIGURATION = 'ReplyMailManagementConfiguration'
+    RESULT_ITEM = 'ResultItem'
+    RESULT_MESSAGE = 'ResultMessage'
+    ROLE = 'Role'
+    SMS_MO_EVENT = 'SMSMOEvent'
+    SMS_MT_EVENT = 'SMSMTEvent'
+    SMS_SHARED_KEYWORD = 'SMSSharedKeyword'
+    SMS_TRIGGERED_SEND = 'SMSTriggeredSend'
+    SMS_TRIGGERED_SEND_DEFINITION = 'SMSTriggeredSendDefinition'
+    SEND_ADDITIONAL_ATTRIBUTE = 'SendAdditionalAttribute'
+    SEND_CLASSIFICATION = 'SendClassification'
+    SEND_EMAIL_MO_KEYWORD = 'SendEmailMOKeyword'
+    SEND_SMS_MO_KEYWORD = 'SendSMSMOKeyword'
+    SENDER_PROFILE = 'SenderProfile'
+    SUBSCRIBER_SEND_RESULT = 'SubscriberSendResult'
+    SUPPRESSION_LIST_CONTEXT = 'SuppressionListContext'
+    SUPPRESSION_LIST_DEFINITION = 'SuppressionListDefinition'
+    SURVEY_EVENT = 'SurveyEvent'
+    TIMEZONE = 'TimeZone'
+    TRIGGERED_SEND_DEFINITION = 'TriggeredSendDefinition'
+    TRIGGERED_SEND_SUMMARY = 'TriggeredSendSummary'
+    UNSUBSCRIBE_FROM_SMS_PUBLICATION_MO_KEYWORD = 'UnsubscribeFromSMSPublicationMOKeyword'
+
+
+class FolderType:
+
+    AB_TEST = 'ABTest'
+    ASSET = 'asset'
+    SIMPLE_AUTOMATED_EMAILS = 'automated_email'
+    AUTOMATIONS = 'automations'
+    BUILD_AUDIENCE_ACTIVITY = 'BuildAudienceActivity'
+    CAMPAIGN = 'campaign'
+    CONDENSED_PREVIEW = 'condensedlpview'
+    MY_CONTENTS = 'content'
+    CONTEXTUAL_SUPPRESSION_LIST = 'contextual_suppression_list'
+    DATA_EXTENSIONS = 'dataextension'
+    MY_DOCUMENTS = 'document'
+    ELT_ACTIVITY = 'ELTactivity'
+    MY_EMAILS = 'email'
+    EMAIL_HIDDEN_MESSAGE_MODEL = 'email_hidden_messagemodel'
+    FILTER_ACTIVITIES = 'filteractivity'
+    DATA_FILTERS = 'filterdefinition'
+    GLOBAL_EMAIL = 'global_email'
+    GLOBAL_EMAIL_SUBSCRIBERS = 'global_email_sub'
+    MY_GROUPS = 'group'
+    HIDDEN = 'Hidden'
+    MY_IMAGES = 'image'
+    MY_TRACKING = 'job'
+    MY_LISTS = 'list'
+    LIVE_CONTENT = 'livecontent'
+    MEASURES = 'measure'
+    PORTFOLIO = 'media'
+    MESSAGE = 'message'
+    MICROSITES = 'microsite'
+    MICROSITE_LAYOUTS = 'micrositelayout'
+    MY_SUBSCRIBERS = 'mysubs'
+    ORGANIZATIONS = 'organization'
+    PLAYBOOKS = 'playbooks'
+    PROGRAMS = 'programs2'
+    PUBLICATION_LISTS = 'publication'
+    QUERY_ACTIVITY = 'queryactivity'
+    SALESFORCE_DATA_EXTENSION = 'salesforcedataextension'
+    SALESFORCE_SENDS = 'salesforcesends'
+    SALESFORCE_SENDS_V5 = 'salesforcesendsv5'
+    SHARED_CONTENT = 'shared_content'
+    SHARED_CONTEXTUAL_SUPPRESSION_LIST = 'shared_contextual_suppression_list'
+    SHARED_DATA = 'shared_data'
+    SHARED_DATA_EXTENSIONS = 'shared_dataextension'
+    SHARED_EMAIL_MESSAGES = 'shared_email'
+    SHARED_ITEMS = 'shared_item'
+    SHARED_PORTFOLIOS = 'shared_portfolio'
+    SHARED_PUBLICATION_LISTS = 'shared_publication'
+    SHARED_SALESFORCE_DATA_EXTENSION = 'shared_salesforcedataextension'
+    SHARED_SUPPRESSION_LISTS = 'shared_suppression_list'
+    SHARED_SURVEYS = 'shared_survey'
+    SHARED_TEMPLATES = 'shared_template'
+    SSJS_ACTIVITY = 'ssjsactivity'
+    SUPPRESSION_LISTS = 'suppression_list'
+    MY_SURVEYS = 'survey'
+    SYNCHRONIZED_DATA_EXTENSION = 'synchronizeddataextension'
+    MY_TEMPLATES = 'template'
+    TRIGGERED_SENDS = 'triggered_send'
+    TRIGGERED_SENDS_JOURNEY_BUILDER = 'triggered_send_journeybuilder'
+    USER_INITIATED_SENDS = 'userinitiatedsends'
 
 
 def validate_response():
@@ -203,10 +315,10 @@ class ET_API:
         if response.message and response.message not in ('OK', 'MoreDataAvailable'):
             if len(response.results) > 0 and 'already in use' in response.results[0].StatusMessage:
                 raise ET_API.ObjectAlreadyExists('Object already exists')
-            elif len(response.results) > 0 and 'Concurrency violation' in response.results[0].ErrorMessage:
+            elif len(response.results) > 0 and 'Concurrency violation' in getattr(response.results[0], "ErrorMessage", ""):
                 raise ET_API.ObjectDoesntExist("Object doesn't exist")
-            elif len(response.results) > 0:
-                raise ET_API.ETApiError('Error: {}'.format(response.results[0].StatusMessage))
+            elif len(response.results) > 0 and getattr(response.results[0], "StatusMessage", ""):
+                raise ET_API.ETApiError('Error: {}'.format(getattr(response.results[0], "StatusMessage", "")))
             else:
                 raise ET_API.ETApiError('{}'.format(response.message))
 
@@ -335,14 +447,19 @@ class ET_API:
         return self.get_client().AddSubscriberToList(email, list_ids, subscriber_key)
 
     @validate_response()
-    def create_data_extension(self, name, columns, customer_key=None):
+    def create_data_extension(self, name, columns, customer_key=None, category_id=None):
         data_extension = {
             'Name': name,
-            'CustomerKey': customer_key,
             'columns': columns
         }
-        response = self.get_client().CreateDataExtensions([data_extension])
-        return response
+
+        if customer_key:
+            data_extension['CustomerKey'] = customer_key
+
+        if category_id:
+            data_extension['CategoryID'] = category_id
+
+        return self.get_client().CreateDataExtensions([data_extension])
 
     @validate_response()
     def clear_data_extension(self, data_extension_key):
@@ -482,3 +599,43 @@ class ET_API:
                 continue
             full_path += " > " + folder_name
         return full_path
+
+    def get_or_create_folder_hierarchy(self, folders_type, folder_names):
+        last_folder_id = None
+
+        for folder_name in folder_names:
+            last_folder_id = self.get_or_create_folder(folders_type, folder_name, last_folder_id)
+
+        return last_folder_id
+
+    def get_or_create_folder(self, folder_type, folder_name, parent_folder_id=None):
+        main_filter = complex_filter(
+            simple_filter("Name", Operator.EQUALS, folder_name),
+            "AND",
+            simple_filter("ContentType", Operator.EQUALS, folder_type)
+        )
+
+        if parent_folder_id:
+            main_filter = complex_filter(
+                simple_filter("Name", Operator.EQUALS, folder_name),
+                "AND",
+                simple_filter("ParentFolder.ID", Operator.EQUALS, parent_folder_id)
+            )
+
+        res = self.get_objects(ObjectType.FOLDER, main_filter, property_list=["ID"])
+        if len(res.results) > 0:
+            return res.results[0].ID
+
+        properties = {
+            "Name": folder_name,
+            "ContentType": folder_type,
+            "Description": "",
+            "IsEditable": True,
+            "IsActive": True
+        }
+        if parent_folder_id:
+            properties["ParentFolder"] = {"ID": parent_folder_id}
+
+        res = self.create_object(ObjectType.FOLDER, property_dict=properties)
+        if res.status:
+            return self.get_or_create_folder(folder_type, folder_name)
