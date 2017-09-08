@@ -30,7 +30,6 @@ class Operator:
 
 class ObjectType:
 
-    AUTOMATION = 'ET_Automation'
     CAMPAIGN = 'ET_Campaign'
     CAMPAIGN_ASSET = 'ET_Campaign_Asset'
     CONTENT_AREA = 'ET_ContentArea'
@@ -53,6 +52,7 @@ class ObjectType:
     UNSUB_EVENT = 'ET_UnsubEvent'
 
     # Non FuelSDK
+    AUTOMATION = 'Automation'
     IMPORT_DEFINITION = 'ImportDefinition'
     IMPORT_RESULTS_SUMMARY = 'ImportResultsSummary'
     PORTFOLIO = 'Portfolio'
@@ -630,11 +630,20 @@ class ET_API:
             "Name": folder_name,
             "ContentType": folder_type,
             "Description": "",
+            "AllowChildren": True,
             "IsEditable": True,
             "IsActive": True
         }
         if parent_folder_id:
             properties["ParentFolder"] = {"ID": parent_folder_id}
+        else:
+            res = self.get_objects(ObjectType.FOLDER,
+                                   complex_filter(
+                                       simple_filter("ContentType", Operator.EQUALS, folder_type),
+                                       "AND",
+                                       simple_filter("ParentFolder.ID", Operator.EQUALS, 0)),
+                                   property_list=["Name", "ID", "ContentType", "ParentFolder.ID"])
+            properties["ParentFolder"]["ID"] = res.results[0].ID
 
         res = self.create_object(ObjectType.FOLDER, property_dict=properties)
         if res.status:
