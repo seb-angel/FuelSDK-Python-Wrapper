@@ -643,7 +643,7 @@ class ET_API:
                                        "AND",
                                        simple_filter("ParentFolder.ID", Operator.EQUALS, 0)),
                                    property_list=["Name", "ID", "ContentType", "ParentFolder.ID"])
-            properties["ParentFolder"]["ID"] = res.results[0].ID
+            properties["ParentFolder"] = {"ID": res.results[0].ID}
 
         res = self.create_object(ObjectType.FOLDER, property_dict=properties)
         if res.status:
