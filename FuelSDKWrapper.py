@@ -444,7 +444,21 @@ class ET_API:
             payload.append({"keys": keys_list[i], "values": values})
 
         r = requests.post(endpoint, data=json.dumps(payload), headers=headers)
-        return FuelSDK.rest.ET_Constructor(r, True)
+        res = FuelSDK.rest.ET_Constructor(r, True)
+
+        if res.code == 200:
+            return res
+        else:  # Endpoint unavailable - Insert row by row
+            rows_inserted = 0
+            for values in values_list:
+                property_dict = {}
+                for i, key in enumerate(keys_list):
+                    property_dict[key] = values[i]
+                res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict,
+                                         data_extension_key=data_extension_key)
+                if res.code == 200:
+                    rows_inserted += 1
+            return rows_inserted
 
     # Convenience methods
     @validate_response()
@@ -488,6 +502,7 @@ class ET_API:
                     fields_data[prop["Name"]] = prop["Value"]
                 res = self.delete_object(ObjectType.DATA_EXTENSION_ROW, object_id_dict=fields_data,
                                          data_extension_key=data_extension_key)
+            return len(res.results)
 
     @validate_response()
     def clear_data_extension_action(self, data_extension_object):
