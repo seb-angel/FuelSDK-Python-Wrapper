@@ -405,8 +405,11 @@ class ET_API:
     def delete_object(self, object_type, object_id_dict=None, data_extension_key=None, data_extension_name=None, is_rest=False):
         obj = self.get_object_class(object_type, is_rest)
         if object_type == ObjectType.DATA_EXTENSION_ROW:
+            if not data_extension_key:
+                raise self.ETApiError("data_extension_key parameters missing.")
             obj.CustomerKey = data_extension_key
-            obj.Name = data_extension_name
+            if data_extension_name:
+                obj.Name = data_extension_name
         if object_id_dict:
             obj.props = object_id_dict
         return obj.delete()
@@ -463,7 +466,6 @@ class ET_API:
 
         return self.get_client().CreateDataExtensions([data_extension])
 
-    @validate_response()
     def clear_data_extension(self, data_extension_key):
         res = self.get_objects(ObjectType.DATA_EXTENSION,
                                simple_filter("CustomerKey", Operator.EQUALS, data_extension_key),
@@ -472,7 +474,24 @@ class ET_API:
         if len(res.results) == 0:
             raise self.ETApiError("The Data Extension {} wasn't found.".format(data_extension_key))
 
-        return self.perform_action("ClearData", res.results[0], "DataExtension")
+        try:
+            return self.clear_data_extension_action(res.results[0])
+        except self.ETApiError as e:  # ClearData action only available on Enterprise 2.0 accounts - Delete all rows
+            res = self.get_data_extension_columns(data_extension_key)
+            columns = [c.Name for c in res.results if c.IsPrimaryKey]
+            if not columns:
+                raise e
+            res = self.get_data_extension_rows(data_extension_key, property_list=columns)
+            for row in res.results:
+                fields_data = {}
+                for prop in row.Properties.Property:
+                    fields_data[prop["Name"]] = prop["Value"]
+                res = self.delete_object(ObjectType.DATA_EXTENSION_ROW, object_id_dict=fields_data,
+                                         data_extension_key=data_extension_key)
+
+    @validate_response()
+    def clear_data_extension_action(self, data_extension_object):
+        return self.perform_action("ClearData", data_extension_object, "DataExtension")
 
     @validate_response()
     def start_automation(self, automation_key):
