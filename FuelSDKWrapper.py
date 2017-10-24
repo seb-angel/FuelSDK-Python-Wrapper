@@ -393,7 +393,7 @@ class ET_API:
     @validate_response()
     def update_object(self, object_type, object_id_dict=None, values_dict=None, data_extension_key=None, is_rest=False):
         obj = self.get_object_class(object_type, is_rest)
-        if object_type == ObjectType.DATA_EXTENSION_ROW:
+        if object_type in (ObjectType.DATA_EXTENSION_ROW, ObjectType.DATA_EXTENSION_COLUMN):
             obj.CustomerKey = data_extension_key
             obj.props = values_dict
         else:
@@ -450,11 +450,10 @@ class ET_API:
             return res
         else:  # Endpoint unavailable - Insert row by row
             rows_inserted = 0
-            for values in values_list:
+            for keys_values in payload:
                 property_dict = {}
-                for keys_values in payload:
-                    for i, key in enumerate(keys_values["keys"]):
-                        property_dict[key] = keys_values["values"][i]
+                for i, key in enumerate(keys_values["keys"]):
+                    property_dict[key] = keys_values["values"][i]
                 res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict, data_extension_key)
                 if res.code == 200:
                     rows_inserted += 1
