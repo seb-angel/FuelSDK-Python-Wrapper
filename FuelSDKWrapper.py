@@ -452,10 +452,10 @@ class ET_API:
             rows_inserted = 0
             for values in values_list:
                 property_dict = {}
-                for i, key in enumerate(keys_list):
-                    property_dict[key] = values[i]
-                res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict,
-                                         data_extension_key=data_extension_key)
+                for keys_values in payload:
+                    for i, key in enumerate(keys_values["keys"]):
+                        property_dict[key] = keys_values["values"][i]
+                res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict, data_extension_key)
                 if res.code == 200:
                     rows_inserted += 1
             return rows_inserted
