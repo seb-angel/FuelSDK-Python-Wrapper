@@ -667,7 +667,8 @@ class ET_API:
             "Description": "",
             "AllowChildren": True,
             "IsEditable": True,
-            "IsActive": True
+            "IsActive": True,
+            "ParentFolder": {}
         }
         if parent_folder_id:
             properties["ParentFolder"] = {"ID": parent_folder_id}

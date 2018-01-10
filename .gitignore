@@ -34,3 +34,4 @@ objsamples/ET_Client.py
 objsamples/config.python
 objsamples/*.pyc
 config.python
+test.py
