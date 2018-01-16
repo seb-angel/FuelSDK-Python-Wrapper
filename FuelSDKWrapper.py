@@ -465,7 +465,7 @@ class ET_API:
         return self.get_client().AddSubscriberToList(email, list_ids, subscriber_key)
 
     @validate_response()
-    def create_data_extension(self, name, columns, customer_key=None, category_id=None):
+    def create_data_extension(self, name, columns, customer_key=None, category_id=None, sendable_de_field_name=None, sendable_subscriber_field_name=None):
         data_extension = {
             'Name': name,
             'columns': columns
@@ -476,6 +476,15 @@ class ET_API:
 
         if category_id:
             data_extension['CategoryID'] = category_id
+
+        if sendable_de_field_name and sendable_subscriber_field_name:
+            data_extension['IsSendable'] = True
+            data_extension['SendableDataExtensionField'] = {
+                "Name": sendable_de_field_name
+            }
+            data_extension['SendableSubscriberField'] = {
+                "Name": sendable_subscriber_field_name
+            }
 
         return self.get_client().CreateDataExtensions([data_extension])
 
