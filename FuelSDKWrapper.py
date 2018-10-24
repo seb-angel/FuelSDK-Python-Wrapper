@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import suds
 import time
-import json
 import logging
 import FuelSDK
 import requests
@@ -443,7 +442,7 @@ class ET_API:
         for i, values in enumerate(values_list):
             payload.append({"keys": keys_list[i], "values": values})
 
-        r = requests.post(endpoint, data=json.dumps(payload), headers=headers)
+        r = requests.post(endpoint, json=payload, headers=headers)
         res = FuelSDK.rest.ET_Constructor(r, True)
 
         if res.code == 200:
@@ -626,7 +625,7 @@ class ET_API:
                 "RequestType": "ASYNC"
             }
         }
-        res = requests.post(url, data=json.dumps(data), headers={"Authorization": "Bearer {}".format(token)})
+        res = requests.post(url, json=data, headers={"Authorization": "Bearer {}".format(token)})
         return res
 
     def get_folder_full_path(self, folder_id):

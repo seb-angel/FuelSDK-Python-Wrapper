@@ -1,11 +1,11 @@
-# FuelSDK-Python-Wrapper
-Simplify and improve the FuelSDK for Salesforce Marketing Cloud (ExactTarget).
+# FuelSDKWrapper
+Simplify and enhance the FuelSDK for Salesforce Marketing Cloud (ExactTarget).
 
 ## Overview
-The Fuel SDK Wrapper for Python add functionalities to the default Fuel SDK and provides access to more SOAP API objects. The Fuel SDK documentation can be found [here](https://github.com/salesforce-marketingcloud/FuelSDK-Python).
+The Fuel SDK Wrapper for Python adds functionalities to the default Fuel SDK and provides access to more SOAP API objects. The Fuel SDK documentation can be found [here](https://github.com/salesforce-marketingcloud/FuelSDK-Python).
 
 ## Installation
-```
+```python
 pip install FuelSDKWrapper
 ```
 
@@ -39,7 +39,7 @@ If you have not registered your application or you need to lookup your Applicati
 
 
 It is also possible to pass those values directly to the API object:
-```
+```python
 params = {
     "clientid": "YOUR_CLIENT_ID",
     "clientsecret": "YOUR_CLIENT_SECRET"
@@ -47,18 +47,18 @@ params = {
 api = ET_API(params=params)
 ```
 
-## Example Request
+## Examples
 
 ### Get the List objects
 
 ```python
-# Add a require statement to reference the Fuel SDK's functionality:
+# Add a require statement to reference the FuelSDK functionality
 from FuelSDKWrapper import ET_API, ObjectType
 
-# Next, create an instance of the ET_API class:
+# Next, create an instance of the ET_API class
 api = ET_API()
 
-# Get the List objects:
+# Get the List objects
 response = api.get_objects(ObjectType.LIST)
 
 # Print out the results for viewing
@@ -71,55 +71,120 @@ print('Results: {}'.format(response.results))
 
 ### Some examples of utilization
 
-```
-from FuelSDKWrapper import ET_API, ObjectType, Operator, search_filter
+```python
+from FuelSDKWrapper import ET_API, ObjectType, Operator, FolderType, simple_filter, complex_filter
 from datetime import datetime, timedelta
 
 api = ET_API()
 
+# Get Subscriber Data using the IN Operator
 response = api.get_objects(
     ObjectType.SUBSCRIBER,
-    search_filter("EmailAddress", Operator.EQUALS, "my.email@domain.com")
+    simple_filter("EmailAddress", Operator.IN, ["my.email@domain.com", "your.email@domain.com"])
 )
 
+# Find Query Definition using the LIKE Operator
+response = api.get_objects(
+    ObjectType.QUERY_DEFINITION,
+    simple_filter("QueryText", Operator.LIKE, "FROM My_DE"),
+    property_list=["Name", "CategoryID", "QueryText"]
+)
+
+# Get Jobs sent in the last 30 days
+start_date = datetime.now() - timedelta(days=30)
+response = api.get_objects(
+    ObjectType.SEND,
+    simple_filter("SendDate", Operator.GREATER_THAN, start_date)
+)
+
+# Get Folder Data
 response = api.get_objects(
     ObjectType.FOLDER,
-    search_filter("Name", Operator.EQUALS, "My_Folder"),
+    complex_filter(
+        simple_filter("Name", Operator.EQUALS, "My_Folder_Name"),
+        "OR",
+        simple_filter("Name", Operator.EQUALS, "My_Other_Folder_Name")
+    ),
     property_list=["ID", "Name"]
 )
 
-dt = datetime.now() - timedelta(days=30)
-response = api.get_objects(
-    ObjectType.SEND,
-    search_filter("SendDate", Operator.GREATER_THAN, dt)
-)
+# Get Folder Full Path
+folder_id = 12345
+response = api.get_folder_full_path(folder_id)
+
+# Get or Create Folder Full Path
+folder_names = ["Test", "Sub_Test"]
+folder_type = FolderType.DATA_EXTENSIONS
+response = api.get_or_create_folder_hierarchy(folder_type, folder_names)
+
+# Start an Automation
+response = api.start_automation("Automation_Key")
+
+# Seng Trigger Email
+response = api.send_trigger_email("MyTriggerKey", "email@email.com", "subscriberkey@email.com", attributes={
+    "first_nm": "Sebastien",
+    "birth_dt": "1/1/1990"
+})
+
+# Get Tokens
+short_token = api.get_client().authToken
+long_token = api.get_client().internalAuthToken
+
+# Get Data Extension Fields sorted by Ordinal
+fields = sorted(api.get_data_extension_columns("My_DE_Key").results, key=lambda x: x.Ordinal)
+
+# Clear Data Extension
+response = api.clear_data_extension("DE_Key")
+
+# Create Batch of Data Extension Rows
+keys_list = [
+    ["Field1", "Field2", "Field3"],  # Fields for Row 1
+    ["Field1", "Field2", "Field3"],  # Fields for Row 2
+    ["Field1", "Field2", "Field3"]   # Fields for Row 3
+]
+values_list = [
+    ["Row1_Value1", "Row1_Value2", "Row1_Value3"],
+    ["Row2_Value1", "Row2_Value2", "Row2_Value3"],
+    ["Row3_Value1", "Row3_Value2", "Row3_Value3"]
+]
+response = api.create_data_extension_rows("DE_Key", keys_list, values_list)
 ```
 
 ### Get More Results
 
+```python
+response = api.get_objects(ObjectType.LIST_SUBSCRIBER,
+                           simple_filter("ListID", Operator.EQUALS, 1234),
+                           property_list=["ID"])
+total = len(response.results)
+while response.more_results:
+    response = api.get_more_results()
+    total += len(response.results)
 ```
-api = ET_API()
 
-response = api.get_objects(ObjectType.SUBSCRIBER)
-i = 0
-while len(response.results) > 0 and (i == 0 or response.more_results):
-    if i > 0 and response.more_results:
-        res = api.continue_request(response.request_id)
-        
-    for subscriber in response.results:
-        print("Subscriber: {}".format(subscriber))
+### Extract Request
+
+```python
+start_date = datetime.now() - timedelta(days=30)
+end_date = datetime.now()
+response = api.extract_data(
+    parameters={"AccountIDs": "123456", "_AsyncID": 0,
+        "StartDate": start_date, "EndDate": end_date,
+        "ExtractSent": "true", "ExtractSendJobs": "true", "ExtractBounces": "false", "ExtractClicks": "false",
+        "ExtractOpens": "false", "ExtractUnsubs": "false", "ExtractConversions": "false",
+        "IncludeTestSends": "false", "IncludeUniqueClicks": "false", "IncludeUniqueOpens": "false",
+        "ExtractSurveyResponses": "false", "Format": "tab",
+        "OutputFileName": "extract.zip"})
 ```
 
 ### Perform Request
 
 You can Perform the list of actions found [here](https://help.marketingcloud.com/en/technical_library/web_service_guide/methods/perform/).
 
-```
-api = ET_API()
-
+```python
 response = api.get_objects(
     ObjectType.IMPORT_DEFINITION,
-    search_filter("Name", Operator.EQUALS, "Import_my_file")
+    simple_filter("Name", Operator.EQUALS, "Import_my_file")
 )
 try:
     import_def = response.results[0]
@@ -130,19 +195,8 @@ except IndexError:
 
 ### List SOAP API Object Properties
 
-```
-api = ET_API()
-
+```python
 response = api.get_info(ObjectType.CONTENT_AREA)
-```
-
-### Object Type Missing
-
-In case the Object Type is missing from the ObjectType class, you can use a string directly: 
-```
-api = ET_API()
-
-response = api.get_objects("AccountUser")
 ```
 
 ## Responses
@@ -159,7 +213,7 @@ All methods on Fuel SDK objects return a generic object that follows the same st
 ## Debug
 
 To debug any issues, activate the debug mode:
-```
+```python
 api = ET_API(debug=True)
 ```
 
@@ -171,6 +225,6 @@ Libraries:
 
 * FuelSDK>=0.9.3
 * PyJWT>=0.1.9
-* requests>=2.2.1
+* requests>=2.18.4
 * suds>=0.4
 * suds-jurko>=0.6

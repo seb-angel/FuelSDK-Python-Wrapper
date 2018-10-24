@@ -4,9 +4,9 @@ with open('README.md') as f:
     readme = f.read()
 
 setup(
-    version='0.3.4',
+    version='1.0.0',
     name='FuelSDKWrapper',
-    description='Simplify and improve the FuelSDK for Salesforce Marketing Cloud (ExactTarget)',
+    description='Simplify and enhance the FuelSDK for Salesforce Marketing Cloud (ExactTarget)',
     long_description=readme,
     author='Seb Angel',
     author_email='seb.angel.force@gmail.com',
@@ -17,6 +17,7 @@ setup(
     install_requires=[
         'FuelSDK>=0.9.3',
         'suds-jurko>=0.6',
+        'requests>=2.18.4',
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
