@@ -8,6 +8,7 @@ setup(
     name='FuelSDKWrapper',
     description='Simplify and enhance the FuelSDK for Salesforce Marketing Cloud (ExactTarget)',
     long_description=readme,
+    long_description_content_type="text/markdown",
     author='Seb Angel',
     author_email='seb.angel.force@gmail.com',
     py_modules=['FuelSDKWrapper'],
