@@ -692,3 +692,9 @@ class ET_API:
         res = self.create_object(ObjectType.FOLDER, property_dict=properties)
         if res.status:
             return self.get_or_create_folder(folder_type, folder_name)
+
+    def get_contacts_counts(self):
+        token = self.get_client().authToken
+        url = "https://www.exacttargetapis.com/contacts/v1/addresses/count/"
+        res = requests.post(url, headers={"Authorization": "Bearer {}".format(token)})
+        return res.json().get("totalCount", -1)
