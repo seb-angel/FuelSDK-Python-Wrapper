@@ -533,7 +533,8 @@ class ET_API:
 
         return self.get_client().CreateDataExtensions([data_extension])
 
-    def copy_data_extension(self, source_customer_key, new_name, new_customer_key=None, new_category_id=None, keep_template=True, keep_retention_policy=True):
+    def copy_data_extension(self, source_customer_key, new_name, new_customer_key=None, new_category_id=None,
+                            keep_template=True, keep_retention_policy=True, keep_sendable=True):
         source_data_extension = self.get_objects(ObjectType.DATA_EXTENSION,
                                                  simple_filter("CustomerKey", Operator.EQUALS, source_customer_key),
                                                  property_list=['CustomerKey', 'Name', 'Description', 'IsSendable',
@@ -545,16 +546,20 @@ class ET_API:
                                                                 'DeleteAtEndOfRetentionPeriod',
                                                                 'RetainUntil', 'DataRetentionPeriod'])
 
+        if source_data_extension.status and source_data_extension.results:
+            source_data_extension = source_data_extension.results[0]
+        else:
+            raise self.ETApiError("The Data Extension wasn't found with the given CustomerKey.")
+
         source_columns = self.get_data_extension_columns(source_customer_key)
         new_columns = []
-        for source_column in source_columns:
+        for source_column in sorted(source_columns.results, key=lambda i: i.Ordinal):
             new_column = {
                 'DefaultValue': source_column.DefaultValue,
                 'FieldType': source_column.FieldType,
                 'IsPrimaryKey': source_column.IsPrimaryKey,
                 'IsRequired': source_column.IsRequired,
                 'Name': source_column.Name,
-                'Ordinal': source_column.Ordinal,
                 'StorageType': source_column.StorageType
             }
             if "MaxLength" in source_column:
@@ -566,9 +571,7 @@ class ET_API:
         data_extension = {
             'Name': new_name,
             'columns': new_columns,
-            'Description': source_data_extension.Description,
-            'IsSendable': source_data_extension.IsSendable,
-            'IsTestable': source_data_extension.IsTestable
+            'Description': source_data_extension.Description
         }
 
         if new_customer_key:
@@ -577,12 +580,22 @@ class ET_API:
         if new_category_id:
             data_extension['CategoryID'] = new_category_id
 
-        if "SendableDataExtensionField" in source_data_extension and "SendableSubscriberField" in source_data_extension:
+        if keep_sendable and "SendableDataExtensionField" in source_data_extension and "SendableSubscriberField" in source_data_extension:
+            data_extension['IsSendable'] = source_data_extension.IsSendable
+            data_extension['IsTestable'] = source_data_extension.IsTestable
+
+            if "Subscriber" in source_data_extension.SendableSubscriberField.Name:
+                sendable_subscriber_field_name = "Subscriber Key"
+            elif "Email" in source_data_extension.SendableSubscriberField.Name:
+                sendable_subscriber_field_name = "Email Address"
+            else:
+                raise self.ETApiError("The Sendable Subscriber Field is invalid.")
+
             data_extension['SendableDataExtensionField'] = {
                 "Name": source_data_extension.SendableDataExtensionField.Name
             }
             data_extension['SendableSubscriberField'] = {
-                "Name": source_data_extension.SendableSubscriberField.Name
+                "Name": sendable_subscriber_field_name
             }
 
         if keep_template and "Template" in source_data_extension:
@@ -601,7 +614,8 @@ class ET_API:
                     and "DataRetentionPeriodUnitOfMeasure" in source_data_extension:
                 data_extension['DataRetentionPeriod'] = source_data_extension.DataRetentionPeriod
                 data_extension['DataRetentionPeriodLength'] = source_data_extension.DataRetentionPeriodLength
-                data_extension['DataRetentionPeriodUnitOfMeasure'] = source_data_extension.DataRetentionPeriodUnitOfMeasure
+                data_extension[
+                    'DataRetentionPeriodUnitOfMeasure'] = source_data_extension.DataRetentionPeriodUnitOfMeasure
 
         return self.get_client().CreateDataExtensions([data_extension])
 
