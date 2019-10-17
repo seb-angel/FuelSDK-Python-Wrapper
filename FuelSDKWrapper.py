@@ -431,9 +431,22 @@ class ET_API:
             de_row.props = property_list
         return de_row.get()
 
-    def create_data_extension_rows(self, data_extension_key, keys_list, values_list):
-        endpoint = 'https://www.exacttargetapis.com/hub/v1/dataevents/key:{}/rowset'.format(data_extension_key)
+    def run_async_call(self, endpoint, payload):
         headers = {'content-type': 'application/json', 'Authorization': 'Bearer {}'.format(self.client.authToken)}
+        r = requests.post(endpoint, json=payload, headers=headers)
+        if r.status_code == 200:
+            request_id = r.json()['requestId']
+            endpoint = '{}/data/v1/async/{}/status'.format(self.client.base_api_url, request_id)
+            status = 'Pending'
+            while status == 'Pending':
+                r = requests.get(endpoint, headers=headers)
+                if r.status_code == 200:
+                    status = r.json()["requestStatus"]
+            return True
+        return False
+
+    def create_data_extension_rows(self, data_extension_key, keys_list, values_list):
+        endpoint = '{}/data/v1/async/dataextensions/key:{}/rows'.format(self.client.base_api_url, data_extension_key)
 
         if len(keys_list) != len(values_list):
             raise self.ETApiError("keys_list and values_list must be the same size.")
@@ -442,12 +455,11 @@ class ET_API:
         for i, values in enumerate(values_list):
             payload.append({"keys": keys_list[i], "values": values})
 
-        r = requests.post(endpoint, json=payload, headers=headers)
-        res = FuelSDK.rest.ET_Constructor(r, True)
+        res = self.run_async_call(endpoint, payload)
 
-        if res.code == 200:
-            return res
-        else:  # Endpoint unavailable - Insert row by row
+        if res:  # Success
+            return len(values_list)
+        else:  # Error: Try inserting row by row
             rows_inserted = 0
             for keys_values in payload:
                 property_dict = {}
@@ -457,6 +469,40 @@ class ET_API:
                 if res.code == 200:
                     rows_inserted += 1
             return rows_inserted
+
+    def update_data_extension_rows(self, data_extension_key, rows_list):
+        endpoint = '{}/data/v1/async/dataextensions/key:{}/rows'.format(self.client.base_api_url, data_extension_key)
+        payload = {'items': rows_list}
+
+        res = self.run_async_call(endpoint, payload)
+
+        if res:  # Success
+            return len(rows_list)
+        else:  # Error: Try updating row by row
+            rows_updated = 0
+            for values_dict in rows_list:
+                res = self.update_object(ObjectType.DATA_EXTENSION_ROW, data_extension_key=data_extension_key,
+                                         values_dict=values_dict)
+                if res.code == 200:
+                    rows_updated += 1
+            return rows_updated
+
+    def delete_data_extension_rows(self, data_extension_key, rows_list):
+        endpoint = '{}/data/v1/async/dataextensions/key:{}/rows'.format(self.client.base_api_url, data_extension_key)
+        payload = {'items': rows_list}
+
+        res = self.run_async_call(endpoint, payload)
+
+        if res:  # Success
+            return len(rows_list)
+        else:  # Error: Try deleting row by row
+            rows_deleted = 0
+            for object_id_dict in rows_list:
+                res = self.delete_object(ObjectType.DATA_EXTENSION_ROW, data_extension_key=data_extension_key,
+                                         object_id_dict=object_id_dict)
+                if res.code == 200:
+                    rows_deleted += 1
+            return rows_deleted
 
     # Convenience methods
     @validate_response()
@@ -484,6 +530,78 @@ class ET_API:
             data_extension['SendableSubscriberField'] = {
                 "Name": sendable_subscriber_field_name
             }
+
+        return self.get_client().CreateDataExtensions([data_extension])
+
+    def copy_data_extension(self, source_customer_key, new_name, new_customer_key=None, new_category_id=None, keep_template=True, keep_retention_policy=True):
+        source_data_extension = self.get_objects(ObjectType.DATA_EXTENSION,
+                                                 simple_filter("CustomerKey", Operator.EQUALS, source_customer_key),
+                                                 property_list=['CustomerKey', 'Name', 'Description', 'IsSendable',
+                                                                'IsTestable', 'SendableDataExtensionField.Name',
+                                                                'SendableSubscriberField.Name', 'Template.CustomerKey',
+                                                                'CategoryID', 'DataRetentionPeriodLength',
+                                                                'DataRetentionPeriodUnitOfMeasure', 'RowBasedRetention',
+                                                                'ResetRetentionPeriodOnImport',
+                                                                'DeleteAtEndOfRetentionPeriod',
+                                                                'RetainUntil', 'DataRetentionPeriod'])
+
+        source_columns = self.get_data_extension_columns(source_customer_key)
+        new_columns = []
+        for source_column in source_columns:
+            new_column = {
+                'DefaultValue': source_column.DefaultValue,
+                'FieldType': source_column.FieldType,
+                'IsPrimaryKey': source_column.IsPrimaryKey,
+                'IsRequired': source_column.IsRequired,
+                'Name': source_column.Name,
+                'Ordinal': source_column.Ordinal,
+                'StorageType': source_column.StorageType
+            }
+            if "MaxLength" in source_column:
+                new_column["MaxLength"] = source_column.MaxLength
+            if "Scale" in source_column:
+                new_column["Scale"] = source_column.Scale
+            new_columns.append(new_column)
+
+        data_extension = {
+            'Name': new_name,
+            'columns': new_columns,
+            'Description': source_data_extension.Description,
+            'IsSendable': source_data_extension.IsSendable,
+            'IsTestable': source_data_extension.IsTestable
+        }
+
+        if new_customer_key:
+            data_extension['CustomerKey'] = new_customer_key
+
+        if new_category_id:
+            data_extension['CategoryID'] = new_category_id
+
+        if "SendableDataExtensionField" in source_data_extension and "SendableSubscriberField" in source_data_extension:
+            data_extension['SendableDataExtensionField'] = {
+                "Name": source_data_extension.SendableDataExtensionField.Name
+            }
+            data_extension['SendableSubscriberField'] = {
+                "Name": source_data_extension.SendableSubscriberField.Name
+            }
+
+        if keep_template and "Template" in source_data_extension:
+            data_extension['Template'] = {
+                'CustomerKey': source_data_extension.Template.CustomerKey
+            }
+
+        if keep_retention_policy:
+            data_extension['RowBasedRetention'] = source_data_extension.RowBasedRetention
+            data_extension['ResetRetentionPeriodOnImport'] = source_data_extension.ResetRetentionPeriodOnImport
+            data_extension['DeleteAtEndOfRetentionPeriod'] = source_data_extension.DeleteAtEndOfRetentionPeriod
+            data_extension['RetainUntil'] = source_data_extension.RetainUntil
+
+            if "DataRetentionPeriod" in source_data_extension \
+                    and "DataRetentionPeriodLength" in source_data_extension \
+                    and "DataRetentionPeriodUnitOfMeasure" in source_data_extension:
+                data_extension['DataRetentionPeriod'] = source_data_extension.DataRetentionPeriod
+                data_extension['DataRetentionPeriodLength'] = source_data_extension.DataRetentionPeriodLength
+                data_extension['DataRetentionPeriodUnitOfMeasure'] = source_data_extension.DataRetentionPeriodUnitOfMeasure
 
         return self.get_client().CreateDataExtensions([data_extension])
 
