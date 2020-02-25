@@ -120,6 +120,7 @@ class FolderType:
     CAMPAIGN = 'campaign'
     CONDENSED_PREVIEW = 'condensedlpview'
     MY_CONTENTS = 'content'
+    CONTENT_BUILDER = 'CONTENT_BUILDER'
     CONTEXTUAL_SUPPRESSION_LIST = 'contextual_suppression_list'
     DATA_EXTENSIONS = 'dataextension'
     MY_DOCUMENTS = 'document'
@@ -678,23 +679,56 @@ class ET_API:
         return self.create_object(ObjectType.CAMPAIGN, property_dict)
 
     def create_or_update_html_paste_email(self, customer_key, category_id, name, subject, pre_header, html, plain_text):
-        property_dict = {
-            'CustomerKey': customer_key,
-            'CategoryID': category_id,
-            'Name': name,
-            'Subject': subject,
-            'PreHeader': pre_header,
-            'HTMLBody': html,
-            'TextBody': plain_text,
-            'EmailType': 'HTML',
-            'CharacterSet': 'UTF-8',
-            'IsHTMLPaste': True
+        payload = {
+            "name": name,
+            "customerKey": customer_key,
+            "category": {
+                "id": category_id
+            },
+            "channels": {
+                "email": True,
+                "web": False
+            },
+            "views": {
+                "html": {
+                    "content": html
+                },
+                "text": {
+                    "content": plain_text
+                },
+                "subjectline": {
+                    "content": subject
+                },
+                "preheader": {
+                    "content": pre_header
+                }
+            },
+            "assetType": {
+                "name": "htmlemail",
+                "id": 208
+            },
+            "data": {
+                "email": {
+                    "options": {
+                        "characterEncoding": "utf-8"
+                    }
+                }
+            }
         }
-        try:
-            return self.create_object(ObjectType.EMAIL, property_dict)
-        except self.ObjectAlreadyExists:
-            object_id_dict = {'CustomerKey': customer_key}
-            return self.update_object(ObjectType.EMAIL, object_id_dict, property_dict)
+        headers = {"Authorization": "Bearer {}".format(self.get_client().authToken)}
+        url = "{}asset/v1/content/assets".format(self.get_client().base_api_url)
+
+        # Create Asset
+        res = requests.post(url, json=payload, headers=headers)
+        if res.status_code not in range(200, 300):  # Creation failed, try Update instead
+            # Retrieve Asset by Customer Key
+            res = requests.get("{}?$filter=customerKey%20eq%20'{}'".format(url, customer_key), headers=headers)
+            if res.status_code in range(200, 300):
+                data = res.json()
+                if data["count"] == 1:  # Asset found, Update Asset
+                    asset_id = data["items"][0]["id"]
+                    res = requests.patch("{}/{}".format(url, asset_id), json=payload, headers=headers)
+        return res
 
     def get_or_update_user_initiated_email(self, subscription_name, email_name):
         res = self.get_objects(
@@ -779,7 +813,10 @@ class ET_API:
         last_folder_id = None
 
         for folder_name in folder_names:
-            last_folder_id = self.get_or_create_folder(folders_type, folder_name, last_folder_id)
+            if folders_type == FolderType.CONTENT_BUILDER:
+                last_folder_id = self.get_or_create_content_builder_folder(folder_name, last_folder_id)
+            else:
+                last_folder_id = self.get_or_create_folder(folders_type, folder_name, last_folder_id)
 
         return last_folder_id
 
@@ -824,6 +861,27 @@ class ET_API:
         res = self.create_object(ObjectType.FOLDER, property_dict=properties)
         if res.status:
             return self.get_or_create_folder(folder_type, folder_name)
+
+    def get_or_create_content_builder_folder(self, folder_name, parent_folder_id=None):
+        headers = {"Authorization": "Bearer {}".format(self.get_client().authToken)}
+        url = "{}asset/v1/content/categories".format(self.get_client().base_api_url)
+        if not parent_folder_id:  # Retrieve the folder with parentID = 0, this is the root folder
+            res = requests.get("{}?$filter=parentId eq 0".format(url), headers=headers)
+            parent_folder_id = res.json()["items"][0]["id"]
+
+        res = requests.get("{}?$filter=parentId eq {}".format(url, parent_folder_id), headers=headers)
+        if res.json()["count"] > 0:  # Retrieve all the folders that has this parent folder
+            for folder in res.json()["items"]:
+                if folder["name"] == folder_name:  # Stop if folder is found
+                    return folder["id"]
+
+        # The folder doesn't exist, create it
+        payload = {
+            "Name": folder_name,
+            "ParentId": parent_folder_id
+        }
+        res = requests.post(url, json=payload, headers=headers)
+        return res.json()["id"]
 
     def get_contacts_counts(self):
         token = self.get_client().authToken
