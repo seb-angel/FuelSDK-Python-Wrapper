@@ -678,10 +678,9 @@ class ET_API:
         }
         return self.create_object(ObjectType.CAMPAIGN, property_dict)
 
-    def create_or_update_html_paste_email(self, customer_key, category_id, name, subject, pre_header, html, plain_text):
+    def create_or_update_html_paste_email(self, category_id, name, subject, html, customer_key=None, plain_text=None, pre_header=None):
         payload = {
             "name": name,
-            "customerKey": customer_key,
             "category": {
                 "id": category_id
             },
@@ -693,14 +692,8 @@ class ET_API:
                 "html": {
                     "content": html
                 },
-                "text": {
-                    "content": plain_text
-                },
                 "subjectline": {
                     "content": subject
-                },
-                "preheader": {
-                    "content": pre_header
                 }
             },
             "assetType": {
@@ -715,14 +708,32 @@ class ET_API:
                 }
             }
         }
+
+        if customer_key:
+            payload["customerKey"] = customer_key
+
+        if plain_text:
+            payload["views"]["text"] = {
+                "content": plain_text
+            }
+
+        if pre_header:
+            payload["views"]["preheader"] = {
+                "content": pre_header
+            }
+
         headers = {"Authorization": "Bearer {}".format(self.get_client().authToken)}
         url = "{}asset/v1/content/assets".format(self.get_client().base_api_url)
 
         # Create Asset
         res = requests.post(url, json=payload, headers=headers)
         if res.status_code not in range(200, 300):  # Creation failed, try Update instead
-            # Retrieve Asset by Customer Key
-            res = requests.get("{}?$filter=customerKey%20eq%20'{}'".format(url, customer_key), headers=headers)
+            # Retrieve Asset by Customer Key if provided, Name otherwise
+            if customer_key:
+                res = requests.get("{}?$filter=customerKey%20eq%20'{}'".format(url, customer_key), headers=headers)
+            else:
+                res = requests.get("{}?$filter=name%20eq%20'{}'".format(url, name), headers=headers)
+
             if res.status_code in range(200, 300):
                 data = res.json()
                 if data["count"] == 1:  # Asset found, Update Asset
