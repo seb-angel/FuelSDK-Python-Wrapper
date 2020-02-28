@@ -148,6 +148,20 @@ values_list = [
     ["Row3_Value1", "Row3_Value2", "Row3_Value3"]
 ]
 response = api.create_data_extension_rows("DE_Key", keys_list, values_list)
+
+# Retrieve Data Extension Rows via REST API for more advanced parameters
+response = api.get_data_extension_rows_rest(
+    customer_key="DE_CUSTOMER_KEY",
+    search_filter=complex_filter(
+        simple_filter("first_name", Operator.EQUALS, "John"),
+        'AND',
+        simple_filter("last_name", Operator.EQUALS, "Doe")
+    ),
+    property_list=["email_address", "first_name", "last_name"],
+    order_by="first_name ASC,last_name DESC",
+    page_size=100,
+    page=5
+)
 ```
 
 ### Get More Results
@@ -223,7 +237,7 @@ Python 2.7.x
 
 Libraries:
 
-* FuelSDK>=0.9.3
+* Salesforce-FuelSDK>=1.3.0
 * PyJWT>=0.1.9
 * requests>=2.18.4
 * suds>=0.4

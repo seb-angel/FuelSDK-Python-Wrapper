@@ -290,6 +290,32 @@ def complex_filter(left_operand, logical_operator, right_operand):
     }
 
 
+def search_filter_for_rest_call(search_filter):
+    if 'LeftOperand' in search_filter:  # Complex Filter
+        left_operand = search_filter_for_rest_call(search_filter['LeftOperand'])
+        logical_operator = search_filter['LogicalOperator']
+        right_operand = search_filter_for_rest_call(search_filter['RightOperand'])
+        return "{}%20{}%20{}".format(left_operand, logical_operator, right_operand)
+    else:  # Simple Filter
+        prop = search_filter['Property']
+        operator = operator_for_rest_call(search_filter['SimpleOperator'])
+        value = search_filter.get('Value', search_filter.get('DateValue'))
+        return "{}%20{}%20'{}'".format(prop, operator, value)
+
+
+def operator_for_rest_call(operator):
+    operators = {
+        'equals': 'eq',
+        'notEquals': 'neq',
+        'greaterThan': 'gt',
+        'greaterThanOrEqual': 'gte',
+        'lessThan': 'lt',
+        'lessThanOrEqual': 'lte',
+        'like': 'like'
+    }
+    return operators[operator]
+
+
 class ET_API:
 
     client = None
@@ -421,6 +447,36 @@ class ET_API:
 
     def get_list_subscriber(self, search_filter=None, property_list=None):
         return self.get_objects(ObjectType.LIST_SUBSCRIBER, search_filter, property_list)
+
+    def get_data_extension_rows_rest(self, customer_key, search_filter=None, property_list=None, order_by=None, page_size=None, page=None):
+        headers = {'content-type': 'application/json', 'Authorization': 'Bearer {}'.format(self.client.authToken)}
+        endpoint = "{}data/v1/customobjectdata/key/{}/rowset?".format(self.client.base_api_url, customer_key)
+
+        if search_filter:
+            endpoint += "&$filter={}".format(search_filter_for_rest_call(search_filter))
+
+        if property_list:
+            endpoint += "&$fields={}".format(",".join(property_list))
+
+        if order_by:
+            endpoint += "&$orderBy={}".format(order_by)
+
+        if page_size:
+            endpoint += "&$pagesize={}".format(page_size)
+
+        if page:
+            endpoint += "&$page={}".format(page)
+
+        result = []
+        r = requests.get(endpoint, headers=headers)
+        if r.status_code == 200 and r.json()['count']:
+            result = r.json()['items']
+            while 'next' in r.json()['links']:
+                endpoint = '{}data{}'.format(self.client.base_api_url, r.json()['links']['next'])
+                r = requests.get(endpoint, headers=headers)
+                if r.status_code == 200 and r.json()['count']:
+                    result += r.json()['items']
+        return result
 
     def get_data_extension_rows(self, customer_key, search_filter=None, property_list=None):
         de_row = FuelSDK.ET_DataExtension_Row()
