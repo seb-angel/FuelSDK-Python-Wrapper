@@ -162,6 +162,13 @@ response = api.get_data_extension_rows_rest(
     page_size=100,
     page=5
 )
+
+response = api.get_data_extension_rows_rest(
+    customer_key="DE_CUSTOMER_KEY",
+    search_filter=simple_filter("full_name", Operator.LIKE, "Jo%Doe"),
+    property_list=["email_address", "full_name"],
+    max_rows=300
+)
 ```
 
 ### Get More Results
@@ -204,7 +211,7 @@ try:
     import_def = response.results[0]
     response = api.perform_action("start", import_def)
 except IndexError:
-    pass
+    print("No Import Definition found")
 ```
 
 ### List SOAP API Object Properties
@@ -234,11 +241,11 @@ api = ET_API(debug=True)
 ## Requirements
 
 Python 2.7.x
+Python 3.x
 
 Libraries:
 
 * Salesforce-FuelSDK>=1.3.0
 * PyJWT>=0.1.9
 * requests>=2.18.4
-* suds>=0.4
 * suds-jurko>=0.6
