@@ -448,7 +448,7 @@ class ET_API:
     def get_list_subscriber(self, search_filter=None, property_list=None):
         return self.get_objects(ObjectType.LIST_SUBSCRIBER, search_filter, property_list)
 
-    def get_data_extension_rows_rest(self, customer_key, search_filter=None, property_list=None, order_by=None, page_size=None, page=None):
+    def get_data_extension_rows_rest(self, customer_key, search_filter=None, property_list=None, order_by=None, page_size=None, page=None, max_rows=2500):
         headers = {'content-type': 'application/json', 'Authorization': 'Bearer {}'.format(self.client.authToken)}
         endpoint = "{}data/v1/customobjectdata/key/{}/rowset?".format(self.client.base_api_url, customer_key)
 
@@ -467,15 +467,19 @@ class ET_API:
         if page:
             endpoint += "&$page={}".format(page)
 
+        if max_rows < 0:
+            max_rows = 2500
+
         result = []
         r = requests.get(endpoint, headers=headers)
         if r.status_code == 200 and r.json()['count']:
-            result = r.json()['items']
-            while 'next' in r.json()['links']:
-                endpoint = '{}data{}'.format(self.client.base_api_url, r.json()['links']['next'])
-                r = requests.get(endpoint, headers=headers)
-                if r.status_code == 200 and r.json()['count']:
-                    result += r.json()['items']
+            result = r.json()['items'][:max_rows]
+            if not page:
+                while 'next' in r.json()['links'] and len(result) < max_rows:
+                    endpoint = '{}data{}'.format(self.client.base_api_url, r.json()['links']['next'])
+                    r = requests.get(endpoint, headers=headers)
+                    if r.status_code == 200 and r.json()['count']:
+                        result += r.json()['items'][:max_rows-len(result)]
         return result
 
     def get_data_extension_rows(self, customer_key, search_filter=None, property_list=None):
