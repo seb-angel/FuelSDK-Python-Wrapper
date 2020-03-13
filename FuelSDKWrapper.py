@@ -345,6 +345,8 @@ class ET_API:
                 raise ET_API.ObjectAlreadyExists('Object already exists')
             elif len(response.results) > 0 and 'Concurrency violation' in (getattr(response.results[0], "ErrorMessage", "") or ""):
                 raise ET_API.ObjectDoesntExist("Object doesn't exist")
+            elif len(response.results) > 0 and getattr(response.results[0], "ValueErrors", "") and len(response.results[0].ValueErrors.ValueError) > 0:
+                raise ET_API.ETApiError('{}'.format(response.results[0].ValueErrors.ValueError[0].ErrorMessage))
             elif len(response.results) > 0 and getattr(response.results[0], "StatusMessage", ""):
                 raise ET_API.ETApiError('Error: {}'.format(getattr(response.results[0], "StatusMessage", "")))
             elif len(response.results) > 0 and len(getattr(response.results, "Result", [])) > 0 and getattr(response.results.Result[0], "StatusMessage", ""):
