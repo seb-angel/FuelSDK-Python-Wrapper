@@ -341,9 +341,9 @@ class ET_API:
     @staticmethod
     def check_response(response):
         if response.message and response.message not in ('OK', 'MoreDataAvailable'):
-            if len(response.results) > 0 and 'already in use' in getattr(response.results[0], "StatusMessage", ""):
+            if len(response.results) > 0 and ('already in use' in getattr(response.results[0], "StatusMessage", "") or ""):
                 raise ET_API.ObjectAlreadyExists('Object already exists')
-            elif len(response.results) > 0 and 'Concurrency violation' in getattr(response.results[0], "ErrorMessage", ""):
+            elif len(response.results) > 0 and ('Concurrency violation' in getattr(response.results[0], "ErrorMessage", "") or ""):
                 raise ET_API.ObjectDoesntExist("Object doesn't exist")
             elif len(response.results) > 0 and getattr(response.results[0], "StatusMessage", ""):
                 raise ET_API.ETApiError('Error: {}'.format(getattr(response.results[0], "StatusMessage", "")))
