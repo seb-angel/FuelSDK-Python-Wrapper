@@ -476,15 +476,16 @@ class ET_API:
 
         result = []
         r = requests.get(endpoint, headers=headers)
-        if r.status_code == 200 and r.json()['count']:
+        items_count = r.json()['count']
+        if r.status_code == 200 and items_count:
             result = r.json()['items'][:max_rows]
             if not page:
                 while 'next' in r.json()['links'] and len(result) < max_rows:
                     endpoint = '{}data{}'.format(self.client.base_api_url, r.json()['links']['next'])
                     r = requests.get(endpoint, headers=headers)
-                    if r.status_code == 200 and r.json()['count']:
+                    if r.status_code == 200 and r.json()['items']:
                         result += r.json()['items'][:max_rows-len(result)]
-        return result
+        return result, items_count
 
     def get_data_extension_rows(self, customer_key, search_filter=None, property_list=None):
         de_row = FuelSDK.ET_DataExtension_Row()

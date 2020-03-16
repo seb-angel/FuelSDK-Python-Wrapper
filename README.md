@@ -150,7 +150,7 @@ values_list = [
 response = api.create_data_extension_rows("DE_Key", keys_list, values_list)
 
 # Retrieve Data Extension Rows via REST API for more advanced parameters
-response = api.get_data_extension_rows_rest(
+items, items_count = api.get_data_extension_rows_rest(
     customer_key="DE_CUSTOMER_KEY",
     search_filter=complex_filter(
         simple_filter("first_name", Operator.EQUALS, "John"),
@@ -163,7 +163,7 @@ response = api.get_data_extension_rows_rest(
     page=5
 )
 
-response = api.get_data_extension_rows_rest(
+items, items_count = api.get_data_extension_rows_rest(
     customer_key="DE_CUSTOMER_KEY",
     search_filter=simple_filter("full_name", Operator.LIKE, "Jo%Doe"),
     property_list=["email_address", "full_name"],
