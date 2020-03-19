@@ -512,7 +512,7 @@ class ET_API:
         return False
 
     def create_data_extension_rows(self, data_extension_key, keys_list, values_list):
-        endpoint = '{}/data/v1/async/dataextensions/key:{}/rows'.format(self.client.base_api_url, data_extension_key)
+        endpoint = '{}hub/v1/dataevents/key:{}/rowset'.format(self.client.base_api_url, data_extension_key)
 
         if len(keys_list) != len(values_list):
             raise self.ETApiError("keys_list and values_list must be the same size.")
@@ -521,9 +521,10 @@ class ET_API:
         for i, values in enumerate(values_list):
             payload.append({"keys": keys_list[i], "values": values})
 
-        res = self.run_async_call(endpoint, payload)
+        token = self.get_client().authToken
+        res = requests.post(endpoint, json=payload, headers={"Authorization": "Bearer {}".format(token)})
 
-        if res:  # Success
+        if res.status_code in range(200, 300):  # Success
             return len(values_list)
         else:  # Error: Try inserting row by row
             rows_inserted = 0
@@ -531,6 +532,22 @@ class ET_API:
                 property_dict = {}
                 for i, key in enumerate(keys_values["keys"]):
                     property_dict[key] = keys_values["values"][i]
+                res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict, data_extension_key)
+                if res.code == 200:
+                    rows_inserted += 1
+            return rows_inserted
+
+    def create_data_extension_rows_async(self, data_extension_key, items_list):
+        endpoint = '{}/data/v1/async/dataextensions/key:{}/rows'.format(self.client.base_api_url, data_extension_key)
+
+        payload = {'items': items_list}
+        res = self.run_async_call(endpoint, payload)
+
+        if res:  # Success
+            return len(items_list)
+        else:  # Error: Try inserting row by row
+            rows_inserted = 0
+            for property_dict in items_list:
                 res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict, data_extension_key)
                 if res.code == 200:
                     rows_inserted += 1
@@ -964,3 +981,24 @@ class ET_API:
         url = "https://www.exacttargetapis.com/contacts/v1/addresses/count/"
         res = requests.post(url, headers={"Authorization": "Bearer {}".format(token)})
         return res.json().get("totalCount", -1)
+
+    def get_email_preview(self, email_id, list_id=None, data_extension_key=None, contact_id=None, contact_key=None):
+        url = "{}guide/v1/emails/{}".format(self.get_client().base_api_url, email_id)
+
+        if list_id:
+            url += "/lists/{}".format(list_id)
+        elif data_extension_key:
+            url += "/dataExtension/key:{}".format(data_extension_key)
+        else:
+            raise self.ETApiError("list_id or data_extension_key required.")
+
+        if contact_id:
+            url += "/contacts/{}/preview?kind=html,text".format(contact_id)
+        elif contact_key:
+            url += "/contacts/key:{}/preview?kind=html,text".format(contact_key)
+        else:
+            raise self.ETApiError("contact_id or contact_key required.")
+
+        token = self.get_client().authToken
+        res = requests.post(url, headers={"Authorization": "Bearer {}".format(token)})
+        return res.json()

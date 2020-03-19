@@ -137,6 +137,7 @@ fields = sorted(api.get_data_extension_columns("My_DE_Key").results, key=lambda 
 response = api.clear_data_extension("DE_Key")
 
 # Create Batch of Data Extension Rows
+# Synchronous
 keys_list = [
     ["Field1", "Field2", "Field3"],  # Fields for Row 1
     ["Field1", "Field2", "Field3"],  # Fields for Row 2
@@ -147,7 +148,15 @@ values_list = [
     ["Row2_Value1", "Row2_Value2", "Row2_Value3"],
     ["Row3_Value1", "Row3_Value2", "Row3_Value3"]
 ]
-response = api.create_data_extension_rows("DE_Key", keys_list, values_list)
+rows_inserted_count = api.create_data_extension_rows("DE_Key", keys_list, values_list)
+
+# Asynchronous
+items_list = [
+    {"Field1": "Value1", "Field2": "Value2", "Field3": "Value3"},  # Row 1
+    {"Field1": "Value1", "Field2": "Value2", "Field3": "Value3"},  # Row 2
+    {"Field1": "Value1", "Field2": "Value2", "Field3": "Value3"}  # Row 3
+]
+rows_inserted_count = api.create_data_extension_rows_async("DE_Key", items_list)
 
 # Retrieve Data Extension Rows via REST API for more advanced parameters
 items, items_count = api.get_data_extension_rows_rest(
@@ -168,6 +177,19 @@ items, items_count = api.get_data_extension_rows_rest(
     search_filter=simple_filter("full_name", Operator.LIKE, "Jo%Doe"),
     property_list=["email_address", "full_name"],
     max_rows=300
+)
+
+# Get Email Rendered Preview
+res = api.get_objects(
+    ObjectType.EMAIL, 
+    simple_filter("Name", Operator.EQUALS, "BCLA_202001_06-LIVE"),
+    property_list=["ID"]
+)
+email_id = res.results[0].ID
+res = api.get_email_preview(
+    email_id,
+    data_extension_key="My_DE_Key",
+    contact_key="My_Contact_Key"
 )
 ```
 
