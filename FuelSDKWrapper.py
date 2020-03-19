@@ -477,13 +477,13 @@ class ET_API:
         result = []
         r = requests.get(endpoint, headers=headers)
         items_count = r.json()['count']
-        if r.status_code == 200 and items_count:
+        if r.status_code in range(200, 300) and items_count:
             result = r.json()['items'][:max_rows]
             if not page:
                 while 'next' in r.json()['links'] and len(result) < max_rows:
                     endpoint = '{}data{}'.format(self.client.base_api_url, r.json()['links']['next'])
                     r = requests.get(endpoint, headers=headers)
-                    if r.status_code == 200 and r.json()['items']:
+                    if r.status_code in range(200, 300) and r.json()['items']:
                         result += r.json()['items'][:max_rows-len(result)]
         return result, items_count
 
@@ -500,13 +500,13 @@ class ET_API:
     def run_async_call(self, endpoint, payload):
         headers = {'content-type': 'application/json', 'Authorization': 'Bearer {}'.format(self.client.authToken)}
         r = requests.post(endpoint, json=payload, headers=headers)
-        if r.status_code == 200:
+        if r.status_code in range(200, 300):
             request_id = r.json()['requestId']
             endpoint = '{}/data/v1/async/{}/status'.format(self.client.base_api_url, request_id)
             status = 'Pending'
             while status == 'Pending':
                 r = requests.get(endpoint, headers=headers)
-                if r.status_code == 200:
+                if r.status_code in range(200, 300):
                     status = r.json()["requestStatus"]
             return True
         return False
@@ -533,7 +533,7 @@ class ET_API:
                 for i, key in enumerate(keys_values["keys"]):
                     property_dict[key] = keys_values["values"][i]
                 res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict, data_extension_key)
-                if res.code == 200:
+                if res.code in range(200, 300):
                     rows_inserted += 1
             return rows_inserted
 
@@ -549,7 +549,7 @@ class ET_API:
             rows_inserted = 0
             for property_dict in items_list:
                 res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict, data_extension_key)
-                if res.code == 200:
+                if res.code in range(200, 300):
                     rows_inserted += 1
             return rows_inserted
 
@@ -566,7 +566,7 @@ class ET_API:
             for values_dict in rows_list:
                 res = self.update_object(ObjectType.DATA_EXTENSION_ROW, data_extension_key=data_extension_key,
                                          values_dict=values_dict)
-                if res.code == 200:
+                if res.code in range(200, 300):
                     rows_updated += 1
             return rows_updated
 
@@ -583,7 +583,7 @@ class ET_API:
             for object_id_dict in rows_list:
                 res = self.delete_object(ObjectType.DATA_EXTENSION_ROW, data_extension_key=data_extension_key,
                                          object_id_dict=object_id_dict)
-                if res.code == 200:
+                if res.code in range(200, 300):
                     rows_deleted += 1
             return rows_deleted
 
