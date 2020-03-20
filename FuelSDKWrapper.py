@@ -212,19 +212,9 @@ class ET_Perform(FuelSDK.rest.ET_Constructor):
     def __init__(self, auth_stub, action, object_source=None, object_type=None):
         auth_stub.refresh_token()
 
-        if object_type:
-            ws_definition = auth_stub.soap_client.factory.create(object_type)
-        else:
-            ws_definition = auth_stub.soap_client.factory.create(type(object_source).__name__)
-
-        if object_source.CustomerKey:
-            ws_definition.CustomerKey = object_source.CustomerKey
-        if object_source.ObjectID:
-            ws_definition.ObjectID = object_source.ObjectID
-
         response = None
         try:
-            response = auth_stub.soap_client.service.Perform(Action=action, Definitions={"Definition": ws_definition})
+            response = auth_stub.soap_client.service.Perform(Action=action, Definitions={"Definition": object_source})
         except suds.TypeNotFound:
             pass
 
