@@ -497,9 +497,15 @@ class ET_API:
             de_row.props = property_list
         return de_row.get()
 
-    def run_async_call(self, endpoint, payload):
+    def run_async_call(self, endpoint, method, payload):
         headers = {'content-type': 'application/json', 'Authorization': 'Bearer {}'.format(self.client.authToken)}
-        r = requests.post(endpoint, json=payload, headers=headers)
+        if method == "POST":
+            r = requests.post(endpoint, json=payload, headers=headers)
+        elif method == "PUT":
+            r = requests.put(endpoint, json=payload, headers=headers)
+        else:
+            raise self.ETApiError("Invalid Method.")
+
         if r.status_code in range(200, 300):
             request_id = r.json()['requestId']
             endpoint = '{}/data/v1/async/{}/status'.format(self.client.base_api_url, request_id)
@@ -507,9 +513,8 @@ class ET_API:
             while status == 'Pending':
                 r = requests.get(endpoint, headers=headers)
                 if r.status_code in range(200, 300):
-                    status = r.json()["requestStatus"]
-            return True
-        return False
+                    status = r.json()["status"]["requestStatus"]
+        return r
 
     def create_data_extension_rows(self, data_extension_key, keys_list, values_list):
         endpoint = '{}hub/v1/dataevents/key:{}/rowset'.format(self.client.base_api_url, data_extension_key)
@@ -523,69 +528,19 @@ class ET_API:
 
         token = self.get_client().authToken
         res = requests.post(endpoint, json=payload, headers={"Authorization": "Bearer {}".format(token)})
+        return res
 
-        if res.status_code in range(200, 300):  # Success
-            return len(values_list)
-        else:  # Error: Try inserting row by row
-            rows_inserted = 0
-            for keys_values in payload:
-                property_dict = {}
-                for i, key in enumerate(keys_values["keys"]):
-                    property_dict[key] = keys_values["values"][i]
-                res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict, data_extension_key)
-                if res.code in range(200, 300):
-                    rows_inserted += 1
-            return rows_inserted
-
-    def create_data_extension_rows_async(self, data_extension_key, items_list):
-        endpoint = '{}/data/v1/async/dataextensions/key:{}/rows'.format(self.client.base_api_url, data_extension_key)
-
-        payload = {'items': items_list}
-        res = self.run_async_call(endpoint, payload)
-
-        if res:  # Success
-            return len(items_list)
-        else:  # Error: Try inserting row by row
-            rows_inserted = 0
-            for property_dict in items_list:
-                res = self.create_object(ObjectType.DATA_EXTENSION_ROW, property_dict, data_extension_key)
-                if res.code in range(200, 300):
-                    rows_inserted += 1
-            return rows_inserted
-
-    def update_data_extension_rows(self, data_extension_key, rows_list):
+    def create_data_extension_rows_async(self, data_extension_key, rows_list):
         endpoint = '{}/data/v1/async/dataextensions/key:{}/rows'.format(self.client.base_api_url, data_extension_key)
         payload = {'items': rows_list}
+        res = self.run_async_call(endpoint, "POST", payload)
+        return res
 
-        res = self.run_async_call(endpoint, payload)
-
-        if res:  # Success
-            return len(rows_list)
-        else:  # Error: Try updating row by row
-            rows_updated = 0
-            for values_dict in rows_list:
-                res = self.update_object(ObjectType.DATA_EXTENSION_ROW, data_extension_key=data_extension_key,
-                                         values_dict=values_dict)
-                if res.code in range(200, 300):
-                    rows_updated += 1
-            return rows_updated
-
-    def delete_data_extension_rows(self, data_extension_key, rows_list):
+    def upsert_data_extension_rows_async(self, data_extension_key, rows_list):
         endpoint = '{}/data/v1/async/dataextensions/key:{}/rows'.format(self.client.base_api_url, data_extension_key)
         payload = {'items': rows_list}
-
-        res = self.run_async_call(endpoint, payload)
-
-        if res:  # Success
-            return len(rows_list)
-        else:  # Error: Try deleting row by row
-            rows_deleted = 0
-            for object_id_dict in rows_list:
-                res = self.delete_object(ObjectType.DATA_EXTENSION_ROW, data_extension_key=data_extension_key,
-                                         object_id_dict=object_id_dict)
-                if res.code in range(200, 300):
-                    rows_deleted += 1
-            return rows_deleted
+        res = self.run_async_call(endpoint, "PUT", payload)
+        return res
 
     # Convenience methods
     @validate_response()

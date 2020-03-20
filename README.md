@@ -150,13 +150,14 @@ values_list = [
 ]
 rows_inserted_count = api.create_data_extension_rows("DE_Key", keys_list, values_list)
 
-# Asynchronous
+# Asynchronous Insert and Upsert
 items_list = [
     {"Field1": "Value1", "Field2": "Value2", "Field3": "Value3"},  # Row 1
     {"Field1": "Value1", "Field2": "Value2", "Field3": "Value3"},  # Row 2
     {"Field1": "Value1", "Field2": "Value2", "Field3": "Value3"}  # Row 3
 ]
-rows_inserted_count = api.create_data_extension_rows_async("DE_Key", items_list)
+res = api.create_data_extension_rows_async("DE_Key", items_list)
+res = api.upsert_data_extension_rows_async("DE_Key", items_list)
 
 # Retrieve Data Extension Rows via REST API for more advanced parameters
 items, items_count = api.get_data_extension_rows_rest(
