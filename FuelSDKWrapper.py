@@ -513,7 +513,12 @@ class ET_API:
             while status == 'Pending':
                 r = requests.get(endpoint, headers=headers)
                 if r.status_code in range(200, 300):
-                    status = r.json()["status"]["requestStatus"]
+                    try:
+                        status = r.json()["status"]["requestStatus"]
+                    except KeyError:
+                        status = "Error"
+                else:
+                    status = "Error"
         return r
 
     def create_data_extension_rows(self, data_extension_key, keys_list, values_list):
