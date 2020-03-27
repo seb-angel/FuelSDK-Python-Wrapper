@@ -500,7 +500,7 @@ class ET_API:
             request_id = r.json()['requestId']
             endpoint = '{}/data/v1/async/{}/status'.format(self.client.base_api_url, request_id)
             status = 'Pending'
-            while status == 'Pending':
+            while status in ('Pending', 'Executing'):
                 r = requests.get(endpoint, headers=headers)
                 if r.status_code in range(200, 300):
                     try:
