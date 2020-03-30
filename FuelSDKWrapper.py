@@ -289,10 +289,16 @@ def search_filter_for_rest_call(search_filter):
     else:  # Simple Filter
         prop = search_filter['Property']
         operator = operator_for_rest_call(search_filter['SimpleOperator'])
-        value = search_filter.get('Value', search_filter.get('DateValue'))
-        if operator == 'like':
-            value = value.replace('%', '%25')
-        return "{}%20{}%20'{}'".format(prop, operator, value)
+
+        if operator == Operator.IS_NULL:
+            return "{}%20IS%20NULL".format(prop)
+        elif operator == Operator.IS_NOT_NULL:
+            return "{}%20IS%20NOT%20NULL".format(prop)
+        else:
+            value = search_filter.get('Value', search_filter.get('DateValue'))
+            if operator == 'like':
+                value = value.replace('%', '%25')
+            return "{}%20{}%20'{}'".format(prop, operator, value)
 
 
 def operator_for_rest_call(operator):
