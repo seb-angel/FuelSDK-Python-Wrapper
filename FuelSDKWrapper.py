@@ -289,11 +289,8 @@ def search_filter_for_rest_call(search_filter):
     else:  # Simple Filter
         prop = search_filter['Property']
         operator = operator_for_rest_call(search_filter['SimpleOperator'])
-
-        if operator == Operator.IS_NULL:
-            return "{}%20IS%20NULL".format(prop)
-        elif operator == Operator.IS_NOT_NULL:
-            return "{}%20IS%20NOT%20NULL".format(prop)
+        if "NULL" in operator:
+            return "{}%20{}".format(prop, operator)
         else:
             value = search_filter.get('Value', search_filter.get('DateValue'))
             if operator == 'like':
@@ -309,7 +306,9 @@ def operator_for_rest_call(operator):
         'greaterThanOrEqual': 'gte',
         'lessThan': 'lt',
         'lessThanOrEqual': 'lte',
-        'like': 'like'
+        'like': 'like',
+        'isNull': 'IS%20NULL',
+        'isNotNull': 'IS%20NOT%20NULL'
     }
     return operators[operator]
 
@@ -448,7 +447,7 @@ class ET_API:
     def get_list_subscriber(self, search_filter=None, property_list=None):
         return self.get_objects(ObjectType.LIST_SUBSCRIBER, search_filter, property_list)
 
-    def get_data_extension_rows_rest(self, customer_key, search_filter=None, property_list=None, order_by=None, page_size=None, page=None, max_rows=2500):
+    def get_data_extension_rows_rest(self, customer_key, search_filter=None, property_list=None, order_by=None, page_size=None, page=None, top=None, max_rows=2500):
         headers = {'content-type': 'application/json', 'Authorization': 'Bearer {}'.format(self.client.authToken)}
         endpoint = "{}data/v1/customobjectdata/key/{}/rowset?".format(self.client.base_api_url, customer_key)
 
@@ -466,6 +465,9 @@ class ET_API:
 
         if page:
             endpoint += "&$page={}".format(page)
+
+        if top:
+            endpoint += "&$top={}".format(top)
 
         if max_rows < 0:
             max_rows = 2500
