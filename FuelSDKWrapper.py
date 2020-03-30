@@ -285,7 +285,7 @@ def search_filter_for_rest_call(search_filter):
         left_operand = search_filter_for_rest_call(search_filter['LeftOperand'])
         logical_operator = search_filter['LogicalOperator']
         right_operand = search_filter_for_rest_call(search_filter['RightOperand'])
-        return "{}%20{}%20{}".format(left_operand, logical_operator, right_operand)
+        return "({}%20{}%20{})".format(left_operand, logical_operator, right_operand)
     else:  # Simple Filter
         prop = search_filter['Property']
         operator = operator_for_rest_call(search_filter['SimpleOperator'])
