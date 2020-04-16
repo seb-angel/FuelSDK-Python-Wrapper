@@ -257,6 +257,10 @@ def search_filter(property_name, operator, value):
 
 
 def simple_filter(property_name, operator, value):
+    if operator == Operator.IN and not isinstance(value, list) and not isinstance(value, tuple)\
+            and not isinstance(value, set) and not isinstance(value, frozenset):
+        raise ET_API.ETApiError("Search filter with IN operator needs a list as value parameter.")
+
     value_type = 'Value'
     if isinstance(value, date) or isinstance(value, datetime):
         value_type = 'DateValue'
@@ -295,6 +299,9 @@ def search_filter_for_rest_call(search_filter):
             value = search_filter.get('Value', search_filter.get('DateValue'))
             if operator == 'like':
                 value = value.replace('%', '%25')
+
+            if operator == 'in':
+                return "{}%20{}%20('{}')".format(prop, operator, "','".join(value))
             return "{}%20{}%20'{}'".format(prop, operator, value)
 
 
@@ -308,7 +315,8 @@ def operator_for_rest_call(operator):
         'lessThanOrEqual': 'lte',
         'like': 'like',
         'isNull': 'IS%20NULL',
-        'isNotNull': 'IS%20NOT%20NULL'
+        'isNotNull': 'IS%20NOT%20NULL',
+        'IN': 'in'
     }
     return operators[operator]
 

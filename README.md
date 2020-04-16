@@ -180,6 +180,12 @@ items, items_count = api.get_data_extension_rows_rest(
     max_rows=300
 )
 
+items, items_count = api.get_data_extension_rows_rest(
+    customer_key="DE_CUSTOMER_KEY",
+    search_filter=simple_filter("first_name", Operator.IN, ["Jane", "John"]),
+    top=100
+)
+
 # Get Email Rendered Preview
 res = api.get_objects(
     ObjectType.EMAIL, 
