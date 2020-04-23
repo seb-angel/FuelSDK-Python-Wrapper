@@ -245,7 +245,7 @@ class ET_Extract(FuelSDK.rest.ET_Constructor):
         try:
             response = auth_stub.soap_client.service.Extract(ws_extractRequest)
         except suds.TypeNotFound as e:
-            if e.message != "Type not found: 'ExtractResult'":
+            if str(e) != "Type not found: 'ExtractResult'":
                 raise e
 
         if response is not None:
