@@ -3,11 +3,15 @@
 from __future__ import unicode_literals
 
 import suds
-import time
 import logging
 import FuelSDK
 import requests
 from datetime import date, datetime
+
+try:  # Python 3
+    from time import perf_counter as clock
+except ImportError:  # Python 2
+    from time import clock
 
 logger_debug = logging.getLogger('FuelSDKWrapper')
 
@@ -176,9 +180,9 @@ class FolderType:
 def validate_response():
     def dec(func):
         def wrapper(*args, **kwargs):
-            start = time.clock()
+            start = clock()
             response = func(*args, **kwargs)
-            end = time.clock()
+            end = clock()
             logger_debug.debug('API Execution Time: {0} - {1} results'.format(humanize_time(end - start), len(response.results)))
             ET_API.check_response(response)
             return response
