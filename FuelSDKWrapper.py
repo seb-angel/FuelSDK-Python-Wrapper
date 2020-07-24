@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import unicode_literals
-
+import re
 import suds
 import logging
 import FuelSDK
@@ -256,6 +253,91 @@ class ET_Extract(FuelSDK.rest.ET_Constructor):
             super(ET_Extract, self).__init__(response)
 
 
+class ET_DataExtension_Row(FuelSDK.rest.ET_CUDSupport):
+    Name = None
+    CustomerKey = None
+
+    def __init__(self):
+        super(ET_DataExtension_Row, self).__init__()
+        self.obj_type = "DataExtensionObject"
+
+    def get(self):
+        self.getName()
+        '''
+        if props and props.is_a? Array then
+            @props = props
+        end
+        '''
+
+        if self.props is not None and type(self.props) is dict:
+            self.props = self.props.keys()
+
+        '''
+        if filter and filter.is_a? Hash then
+            @filter = filter
+        end
+        '''
+
+        obj = ET_Get(self.auth_stub, "DataExtensionObject[{0}]".format(self.CustomerKey), self.props,
+                     self.search_filter, self.options)
+        self.last_request_id = obj.request_id
+
+        return obj
+
+    def getName(self):
+        if self.Name is None:
+            if self.CustomerKey is None:
+                raise Exception('Unable to process DataExtension::Row request due to CustomerKey and Name not being defined on ET_DatExtension::row')
+            else:
+                de = FuelSDK.ET_DataExtension()
+                de.auth_stub = self.auth_stub
+                de.props = ["Name", "CustomerKey"]
+                de.search_filter = {'Property': 'CustomerKey', 'SimpleOperator': 'equals', 'Value': self.CustomerKey}
+                getResponse = de.get()
+                if getResponse.status and len(getResponse.results) == 1 and 'Name' in getResponse.results[0]:
+                    self.Name = getResponse.results[0]['Name']
+                else:
+                    raise Exception('Unable to process DataExtension::Row request due to unable to find DataExtension based on CustomerKey')
+
+
+class ET_Get(FuelSDK.rest.ET_Constructor):
+    def __init__(self, auth_stub, obj_type, props=None, search_filter=None, options=None):
+        auth_stub.refresh_token()
+
+        if props is None:  # if there are no properties to retrieve for the obj_type then return a Description of obj_type
+            describe = FuelSDK.rest.ET_Describe(auth_stub, obj_type)
+            props = []
+            for prop in describe.results[0].Properties:
+                if prop.IsRetrievable:
+                    props.append(prop.Name)
+
+        ws_retrieveRequest = auth_stub.soap_client.factory.create('RetrieveRequest')
+
+        if props is not None:
+            if type(props) is dict:  # If the properties is a hash, then we just want to use the keys
+                ws_retrieveRequest.Properties = list(props.keys())
+            else:
+                ws_retrieveRequest.Properties = props
+
+        if search_filter is not None:
+            ws_retrieveRequest.Filter = search_filter_for_soap_call(auth_stub, search_filter)
+
+        if options is not None:
+            for key, value in options.items():
+                if isinstance(value, dict):
+                    for k, v in value.items():
+                        ws_retrieveRequest.Options[key][k] = v
+                else:
+                    ws_retrieveRequest.Options[key] = value
+
+        ws_retrieveRequest.ObjectType = obj_type
+
+        response = auth_stub.soap_client.service.Retrieve(ws_retrieveRequest)
+
+        if response is not None:
+            super(ET_Get, self).__init__(response)
+
+
 def search_filter(property_name, operator, value):
     return simple_filter(property_name, operator, value)
 
@@ -264,10 +346,48 @@ def simple_filter(property_name, operator, value):
     if operator == Operator.IN and not isinstance(value, list) and not isinstance(value, tuple)\
             and not isinstance(value, set) and not isinstance(value, frozenset):
         raise ET_API.ETApiError("Search filter with IN operator needs a list as value parameter.")
+    elif operator == Operator.BETWEEN and not isinstance(value, list) and not isinstance(value, tuple)\
+            and not isinstance(value, set) and not isinstance(value, frozenset) and len(value) != 2:
+        raise ET_API.ETApiError("Search filter with BETWEEN operator needs a 2 values list as value parameter.")
 
     value_type = 'Value'
     if isinstance(value, date) or isinstance(value, datetime):
         value_type = 'DateValue'
+    elif operator == Operator.BETWEEN and (isinstance(value[0], date) or isinstance(value[0], datetime)) \
+            and (isinstance(value[1], date) or isinstance(value[1], datetime)):
+        value[0] = value[0].strftime("%Y-%m-%dT07:00:00.000Z")
+        value[1] = value[1].strftime("%Y-%m-%dT07:00:00.000Z")
+        value_type = 'DateValue'
+    elif operator in (Operator.LESS_THAN, Operator.LESS_THAN_OR_EQUAL, Operator.GREATER_THAN, Operator.GREATER_THAN_OR_EQUAL):
+        formats = ('%Y-%m-%d', '%y-%m-%d', '%Y%m%d', '%y%m%d', '%m/%d/%Y', '%m/%d/%y', '%d/%m/%Y', '%d/%m/%y')
+        for fmt in formats:
+            try:
+                value = str(datetime.strptime(value.split(" ")[0], fmt).date())
+                value_type = 'DateValue'
+                break
+            except ValueError:
+                pass
+    elif operator == Operator.BETWEEN and not re.match(r"^\d*[.]?\d*$", str(value[0])) \
+            and not re.match(r"^\d*[.]?\d*$", str(value[1])):
+        formats = ('%Y-%m-%d', '%y-%m-%d', '%Y%m%d', '%y%m%d', '%m/%d/%Y', '%m/%d/%y', '%d/%m/%Y', '%d/%m/%y')
+        for fmt in formats:
+            try:
+                value_0 = datetime.strptime(value[0].split(" ")[0], fmt)
+                if len(value[0].split(" ")) == 1:  # Date
+                    value[0] = "{}T07:00:00.000Z".format(value[0].split(" ")[0])
+                else:  # Datetime
+                    value[0] = value_0
+
+                value_1 = datetime.strptime(value[1].split(" ")[0], fmt)
+                if len(value[1].split(" ")) == 1:  # Date
+                    value[1] = "{}T07:00:00.000Z".format(value[1].split(" ")[0])
+                else:  # Datetime
+                    value[1] = value_1
+
+                value_type = 'DateValue'
+                break
+            except ValueError:
+                pass
 
     return {
         'Property': property_name,
@@ -288,8 +408,42 @@ def complex_filter(left_operand, logical_operator, right_operand):
     }
 
 
+def search_filter_for_soap_call(auth_stub, search_filter):
+    if 'LogicalOperator' in search_filter:  # Complex Filter
+        left_operand = search_filter_for_soap_call(auth_stub, search_filter['LeftOperand'])
+        logical_operator = search_filter['LogicalOperator']
+        right_operand = search_filter_for_soap_call(auth_stub, search_filter['RightOperand'])
+
+        complex_filter_part = auth_stub.soap_client.factory.create('ComplexFilterPart')
+        complex_filter_part.LeftOperand = left_operand
+        complex_filter_part.RightOperand = right_operand
+        complex_filter_part.LogicalOperator = logical_operator
+
+        return complex_filter_part
+    else:  # Simple Filter
+        operator = search_filter['SimpleOperator']
+
+        simple_filter_part = auth_stub.soap_client.factory.create('SimpleFilterPart')
+        simple_filter_part.Property = search_filter['Property']
+        simple_filter_part.SimpleOperator = operator
+
+        if 'Value' in search_filter:
+            value = search_filter['Value']
+            if operator == 'like':
+                value = value.replace('%', '%25')
+
+            if operator == 'IN':
+                value = "','".join(value)
+
+            simple_filter_part.Value = value
+        elif 'DateValue' in search_filter:
+            simple_filter_part.DateValue = search_filter['DateValue']
+
+        return simple_filter_part
+
+
 def search_filter_for_rest_call(search_filter):
-    if 'LeftOperand' in search_filter:  # Complex Filter
+    if 'LogicalOperator' in search_filter:  # Complex Filter
         left_operand = search_filter_for_rest_call(search_filter['LeftOperand'])
         logical_operator = search_filter['LogicalOperator']
         right_operand = search_filter_for_rest_call(search_filter['RightOperand'])
@@ -497,14 +651,24 @@ class ET_API:
                         result += r.json()['items'][:max_rows-len(result)]
         return result, items_count
 
-    def get_data_extension_rows(self, customer_key, search_filter=None, property_list=None):
-        de_row = FuelSDK.ET_DataExtension_Row()
+    def get_data_extension_rows(self, customer_key, search_filter=None, property_list=None, page_size=None):
+        de_row = ET_DataExtension_Row()
         de_row.auth_stub = self.get_client()
         de_row.CustomerKey = customer_key
+
         if search_filter:
             de_row.search_filter = search_filter
+
         if property_list:
             de_row.props = property_list
+        else:
+            de_row.props = [c.Name for c in sorted(
+                self.get_data_extension_columns(customer_key, property_list=["Name", "Ordinal"]).results,
+                key=lambda x: x.Ordinal)]
+
+        if page_size:
+            de_row.options = {"BatchSize": page_size}
+
         return de_row.get()
 
     def run_async_call(self, endpoint, method, payload):
