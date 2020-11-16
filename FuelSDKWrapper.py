@@ -1096,7 +1096,7 @@ class ET_API:
             res = requests.get("{}?$filter=parentId eq 0".format(url), headers=headers)
             parent_folder_id = res.json()["items"][0]["id"]
 
-        res = requests.get("{}?$filter=parentId eq {}".format(url, parent_folder_id), headers=headers)
+        res = requests.get("{}?$pagesize=500&$filter=parentId eq {}".format(url, parent_folder_id), headers=headers)
         if res.json()["count"] > 0:  # Retrieve all the folders that has this parent folder
             for folder in res.json()["items"]:
                 if folder["name"] == folder_name:  # Stop if folder is found
