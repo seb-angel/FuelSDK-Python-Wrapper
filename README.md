@@ -198,6 +198,10 @@ res = api.get_email_preview(
     data_extension_key="My_DE_Key",
     contact_key="My_Contact_Key"
 )
+
+# Retrieve All Subscribers List ID
+# The real ID is not what is sent by the SOAP List object
+all_subscribers_list_id = api.get_all_subscribers_list_id()
 ```
 
 ### Get More Results

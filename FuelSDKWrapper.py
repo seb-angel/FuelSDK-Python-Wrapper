@@ -559,7 +559,7 @@ class ET_API:
         return res
 
     @validate_response()
-    def get_objects(self, object_type, search_filter=None, property_list=None, query_all_accounts=False, is_rest=False):
+    def get_objects(self, object_type, search_filter=None, property_list=None, query_all_accounts=False, is_rest=False, options=None):
         obj = self.get_object_class(object_type, is_rest)
         if search_filter:
             obj.search_filter = search_filter
@@ -567,6 +567,8 @@ class ET_API:
             obj.props = property_list
         if query_all_accounts:
             obj.QueryAllAccounts = True
+        if options:
+            obj.options = options
         return obj.get()
 
     @validate_response()
@@ -1136,3 +1138,11 @@ class ET_API:
         token = self.get_client().authToken
         res = requests.post(url, headers={"Authorization": "Bearer {}".format(token)})
         return res.json()
+
+    def get_all_subscribers_list_id(self):
+        res = self.get_objects(ObjectType.LIST_SEND,
+                               search_filter=simple_filter("List.ListName", Operator.EQUALS, "All Subscribers"),
+                               property_list=["List.ID"],
+                               options={"BatchSize": 1})
+        if res.results:
+            return res.results[0].List.ID
